@@ -19,21 +19,8 @@
 # Author:
 # Veronica Valeros vero.valeros@gmail.com
 #
-# Changelog
-# - Implemented a depth limit in crawling logic.
-# - Added summary at the end of crawling with statistical data about the crawling results
-# - Incresed crawl speed. 
-# - Implemented HEAD method for analysing file types before crawling. 
-# - Almost all from the last published version! 
-#
-# ToDo
-# - [!] Exception inside crawl() function. While statement rise the exception.
-#   <class 'httplib.IncompleteRead'>
-#   ...
-#   IncompleteRead(2020 bytes read, 4429 more expected)
 
 
-# standar imports
 import sys
 import re
 import getopt
@@ -432,9 +419,9 @@ def get_links(link_host, link_path, content):
         return -1
 
 def crawl(url,usuario,password,output_filename,crawl_limit=0,log=False,log_filename='none',crawl_depth=0):
-	
+
 	"""
-	Crawl a given url using a breadth first exploration. 
+	Crawl a given url using a breadth first exploration.
 
 	The function returns the following values: [links_crawled, urls_not_crawled, links_to_files]
 	"""
@@ -442,7 +429,7 @@ def crawl(url,usuario,password,output_filename,crawl_limit=0,log=False,log_filen
 	global debug
 	global verbose
 	global error_codes
-	
+
 	# Vector that stores the remaining URLs to crawl
 	urls_to_crawl = []
 	urls_not_crawled = []
@@ -919,8 +906,8 @@ def statistics(global_time, directories, indexing, links_crawled, files, extensi
 	global debug
 	global verbose
 	global time_responses
-	
-	queries_time = 0 
+
+	queries_time = 0
 	avg_time_per_query = 0
 	amt_files_per_extension = {}
 
@@ -988,7 +975,7 @@ def main():
 	usuario = "crawler123"
 	password = "crawler123"
 	crawl_limit = 0
-	extensions_to_download = "" 
+	extensions_to_download = ""
 	download_files_flag=False
 	export_file_list = False
 	interactive_flag=False
@@ -1016,7 +1003,7 @@ def main():
 		opts, args = getopt.getopt(sys.argv[1:], "hVDwu:vLU:Pl:[d:]eiC:", ["help","version","debug","write","url=","verbose","common-log-format","usuario=","password","crawl-limit=","[download-file=]","export-file-list","interactive-download","crawl-depth="])
 
 
-	except getopt.GetoptError: usage()	
+	except getopt.GetoptError: usage()
 
 	for opt, arg in opts:
 		if opt in ("-h", "--help"): usage()
@@ -1052,7 +1039,7 @@ def main():
 						output_name = ""
 			else:
 				output_name = ""
-			
+
 			if log:
 				log_name = date +'_'+ urllib.parse.urlparse(url_to_crawl).netloc + '.log'
 				try:
@@ -1067,20 +1054,20 @@ def main():
 
 			# Crawl function
 			[links_crawled,externals_url_vector, files_vector] = crawl(url_to_crawl, usuario, password, output_file, crawl_limit, log,log_file,int(crawl_depth))
-			
+
 			# Indexing search
 			[directories, indexing] = indexing_search(usuario, password,links_crawled,output_file)
-			
+
 			# Printing found files and exporting files to an output file
 			report_files(export_file_list,files_vector,output_file)
 
 			# Searching for external links
 			external_links(url_to_crawl,externals_url_vector,output_file)
-			
+
 			# Download files
 			if download_files_flag or interactive_flag:
 				extensions_found = download_files(extensions_to_download,files_vector,usuario,password,interactive_flag,output_file)
-			
+
 			printout('',output_file)
 			printout('[+] End time: '+str(datetime.datetime.today()),output_file)
 
