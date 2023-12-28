@@ -416,169 +416,158 @@ def get_links(link_host, link_path, content):
         return -1
 
 def crawl(url,usuario,password,output_filename,crawl_limit=0,log=False,log_filename='none',crawl_depth=0):
+    """
+    Crawl a given url using a breadth first exploration.
 
-	"""
-	Crawl a given url using a breadth first exploration.
+    The function returns the following values: [links_crawled, urls_not_crawled, links_to_files]
+    """
 
-	The function returns the following values: [links_crawled, urls_not_crawled, links_to_files]
-	"""
+    global debug
+    global verbose
+    global error_codes
 
-	global debug
-	global verbose
-	global error_codes
+    # Vector that stores the remaining URLs to crawl
+    urls_to_crawl = []
+    urls_not_crawled = []
+    links_crawled = []
+    links_extracted = []
+    files=[]
+    crawl_limit_flag=False
 
-	# Vector that stores the remaining URLs to crawl
-	urls_to_crawl = []
-	urls_not_crawled = []
-	links_crawled = []
-	links_extracted = []
-	files=[]
-	crawl_limit_flag=False
+    urls_to_crawl.append(url)
 
-	urls_to_crawl.append(url)
+    if (crawl_limit>0):
+        crawl_limit_flag=True
+    if crawl_depth > 0:
+        crawl_depth = crawl_depth + 3
+    try:
+        printout('[+] Site to crawl: '+url,output_filename)
+        printout('[+] Start time: '+str(datetime.datetime.today()),output_filename)
+        if output_filename:
+            printout('[+] Output file: '+output_filename.name,output_filename)
+        if log:
+            printout('[+] Common log format output: '+log_filename.name,output_filename)
 
-	if (crawl_limit>0):
-		crawl_limit_flag=True
-	if crawl_depth > 0:
-		crawl_depth = crawl_depth + 3
-	try:
-		printout('[+] Site to crawl: '+url,output_filename)
-		printout('[+] Start time: '+str(datetime.datetime.today()),output_filename)
-		if output_filename:
-			printout('[+] Output file: '+output_filename.name,output_filename)
-		if log:
-			printout('[+] Common log format output: '+log_filename.name,output_filename)
+        printout('',output_filename)
+        printout('[+] Crawling',output_filename)
 
-		printout('',output_filename)
-		printout('[+] Crawling',output_filename)
+        while urls_to_crawl:
+            if crawl_limit_flag:
+                if (len(links_crawled) >= crawl_limit):
+                    break
+            try:
+                # We extract the next url to crawl
+                url = urls_to_crawl[0]
+                urls_to_crawl.remove(url)
 
-		while urls_to_crawl:
-			if crawl_limit_flag:
-				if (len(links_crawled) >= crawl_limit):
-					break
-			try:
-				# We extract the next url to crawl
-				url = urls_to_crawl[0]
-				urls_to_crawl.remove(url)
+                # Here we limit the crawl depth
+                if crawl_depth > 0:
+                    if url.endswith('/'):
+                        if url.rpartition('/')[0].count('/') >= crawl_depth:
+                            continue
+                    elif url.count('/') >= crawl_depth:
+                        continue
 
-				# Here we limit the crawl depth
-				if crawl_depth > 0:
-					if url.endswith('/'):
-						if url.rpartition('/')[0].count('/') >= crawl_depth:
-							continue
-					elif url.count('/') >= crawl_depth:
-							continue
+                # We add the url to the links crawled
+                links_crawled.append(url)
 
-				# We add the url to the links crawled
-				links_crawled.append(url)
+                # We print the URL that is being crawled
+                printout('   [-] '+str(url),output_filename)
 
-				# We print the URL that is being crawled
-				printout('   [-] '+str(url),output_filename)
+                # We extract the host of the crawled URL	
+                parsed_url = urllib.parse.urlparse(url)
+                host = parsed_url.scheme + '://' + parsed_url.netloc
 
-				# We extract the host of the crawled URL	
-				parsed_url = urllib.parse.urlparse(url)
-				host = parsed_url.scheme + '://' + parsed_url.netloc
+                if parsed_url.path.endswith('/'):
+                    link_path = host + parsed_url.path
+                else:
+                    link_path = host + parsed_url.path.rpartition('/')[0] + '/'
 
-				if parsed_url.path.endswith('/'):
-					link_path = host + parsed_url.path
-				else:
-					link_path = host + parsed_url.path.rpartition('/')[0] + '/'
+                # We obtain the response of the URL
+                [request,response] = get_url(url,host,usuario, password,False)
 
-				# We obtain the response of the URL
-				[request,response] = get_url(url,host,usuario, password,False)
+                # If there is a response
+                if response:
+                    #If the server didn't return an HTTP Error
+                    if not isinstance(response, int):
+                        content = response.read()
 
-				# If there is a response
-				if response:
-					#If the server didn't return an HTTP Error
-					if not isinstance(response, int):
-						content = response.read()
+                        if log:
+                            log_line(request,response.getcode(),len(content),log_filename)
 
-						if log:
-							log_line(request,response.getcode(),len(content),log_filename)
+                        # We print the file type of the crawled page
+                        if response.headers.typeheader:
+                            # If it isn't an HTML file
+                            if 'text/html' not in response.headers.typeheader:
+                                if url not in files:
+                                    files.append([url,str(response.headers.typeheader.split('/')[1].split(';')[0])])
+                                if verbose:
+                                    printout('\t[-] ('+str(response.getcode())+') '+str(response.headers.typeheader),output_filename)
+                            else:
+                                #if verbose:
+                                #	printout('\t[-] ('+str(response.getcode())+') '+str(response.headers.typeheader),output_filename)
 
-						# We print the file type of the crawled page
-						if response.headers.typeheader:
-							# If it isn't an HTML file
-							if 'text/html' not in response.headers.typeheader:
-								if url not in files:
-									files.append([url,str(response.headers.typeheader.split('/')[1].split(';')[0])])
-								if verbose:
-									printout('\t[-] ('+str(response.getcode())+') '+str(response.headers.typeheader),output_filename)
-							else:
-								#if verbose:
-								#	printout('\t[-] ('+str(response.getcode())+') '+str(response.headers.typeheader),output_filename)
+                                links_extracted = get_links(host, link_path, content)
+                                links_extracted.sort()
 
-								links_extracted = get_links(host, link_path, content)
-								links_extracted.sort()
+                                # We add new links to the list of urls to crawl
+                                for link in links_extracted:
+                                    if debug:
+                                        print('\t   [i] {0}'.format(link))
+                                    parsed_link= urllib.parse.urlparse(link)
+                                    link_host = parsed_link.scheme + '://' + parsed_link.netloc
 
-								# We add new links to the list of urls to crawl
-								for link in links_extracted:
-									if debug:
-										print('\t   [i] {0}'.format(link))
-									parsed_link= urllib.parse.urlparse(link)
-									link_host = parsed_link.scheme + '://' + parsed_link.netloc
+                                    # We just crawl URLs of the same host
+                                    if link_host == host:
+                                        if link not in links_crawled and link not in urls_to_crawl:
+                                            urls_to_crawl.append(link)
+                                    elif link not in urls_not_crawled:
+                                        urls_not_crawled.append(link)
+                    else:
+                        # We print the error code if neccesary
+                        printout('\t[i] '+error_codes[str(response)],output_filename)
+                        if log:
+                            log_line(request,response,-1,log_filename)
+                else:
+                    if response==1:
+                        continue
+                    if response==0:
+                        print('[!] Skypping the rest of the urls')
+                        break
 
-									# We just crawl URLs of the same host
-									if link_host == host:
-										if link not in links_crawled and link not in urls_to_crawl:
-											urls_to_crawl.append(link)
-									elif link not in urls_not_crawled:
-										urls_not_crawled.append(link)
-					else:
-						# We print the error code if neccesary
-						printout('\t[i] '+error_codes[str(response)],output_filename)
-						if log:
-							log_line(request,response,-1,log_filename)
-				else:
-					if response==1:
-						continue
-					if response==0:
-						print('[!] Skypping the rest of the urls')
-						break
+            except KeyboardInterrupt:
+                try:
+                    print('[!] Press a key to continue')
+                    input()
+                    continue
+                except KeyboardInterrupt:
+                    print('[!] Exiting')
+                    break
 
-			except KeyboardInterrupt:
-				try:
-					print('[!] Press a key to continue') 
-					input()
-					continue
-				except KeyboardInterrupt:
-					print('[!] Exiting')
-					break	
+            except Exception as inst:
+                print('[!] Exception inside crawl() function. While statement rise the exception.')
+                print(inst)           # __str__ allows args to printed directly
+                break
 
-			except Exception as inst:
-				print('[!] Exception inside crawl() function. While statement rise the exception.')
-				print(type(inst))     # the exception instance
-				print(inst.args)      # arguments stored in .args
-				print(inst)           # __str__ allows args to printed directly
-				x, y = inst          # __getitem__ allows args to be unpacked directly
-				print('x =', x)
-				print('y =', y)
-				print('Response: {0}'.format(response))
-				break
-		
-		printout('[+] Total urls crawled: '+str(len(links_crawled)),output_filename)
-		printout('',output_filename)
+        printout('[+] Total urls crawled: '+str(len(links_crawled)),output_filename)
+        printout('',output_filename)
 
-		return [links_crawled,urls_not_crawled,files]
+        return [links_crawled,urls_not_crawled,files]
 
-	except KeyboardInterrupt:
-		try:
-			print('[!] Press a key to continue') 
-			input()
-			return 1
-		except KeyboardInterrupt:
-			print('[!] Keyboard interruption. Exiting')
-			return 1
-       
-	except Exception as inst:
-		print('[!] Exception in crawl() function')
-		print(type(inst))     # the exception instance
-		print(inst.args)      # arguments stored in .args
-		print(inst)           # __str__ allows args to printed directly
-		x, y = inst          # __getitem__ allows args to be unpacked directly
-		print('x =', x)
-		print('y =', y)
-		return -1
+    except KeyboardInterrupt:
+        try:
+            print('[!] Press a key to continue')
+            input()
+            return 1
+        except KeyboardInterrupt:
+            print('[!] Keyboard interruption. Exiting')
+            return 1
+
+    except Exception as inst:
+        print('[!] Exception in crawl() function')
+        print(inst)           # __str__ allows args to printed directly
+        return -1
+
 
 def external_links(root_url,external_vector,output_filename):
 	
