@@ -37,9 +37,9 @@
 import sys
 import re
 import getopt
-import urllib2
-import urlparse
-import httplib
+import urllib.request, urllib.error, urllib.parse
+import urllib.parse
+import http.client
 import copy
 import os
 import time
@@ -102,342 +102,334 @@ error_codes['9999']='Server responds with a HTTP status code that we do not unde
 
 # Print version information and exit
 def version():
-	"""
-	This function prints the version of this program. It doesn't allow any argument.
-	"""
-	print "+----------------------------------------------------------------------+"
-    	print "| "+ sys.argv[0] + " Version "+ vernum +"                                      |"
-	print "| This program is free software; you can redistribute it and/or modify |"
-	print "| it under the terms of the GNU General Public License as published by |"
-	print "| the Free Software Foundation; either version 2 of the License, or    |"
-	print "| (at your option) any later version.                                  |"
-	print "|                                                                      |"
-	print "| Author: Veronica Valeros, vero.valeros@gmail.com                     |"
-	print "+----------------------------------------------------------------------+"
-	print
+    """
+    This function prints the version of this program. It doesn't allow any argument.
+    """
+    print("+----------------------------------------------------------------------+")
+    print("| "+ sys.argv[0] + " Version "+ vernum +"                              |")
+    print("| This program is free software; you can redistribute it and/or modify |")
+    print("| it under the terms of the GNU General Public License as published by |")
+    print("| the Free Software Foundation; either version 2 of the License, or    |")
+    print("| (at your option) any later version.                                  |")
+    print("|                                                                      |")
+    print("| Author: Veronica Valeros, vero.valeros@gmail.com                     |")
+    print("+----------------------------------------------------------------------+")
+    print()
 
 # Print help information and exit:
 def usage():
-	"""
-	This function prints the posible options of this program.
+    """
+    This function prints the posible options of this program.
 
-	No parameters are needed.
-	"""
-	print "+----------------------------------------------------------------------+"
-	print "| "+ sys.argv[0] + " Version "+ vernum +"                                      |"
-	print "| This program is free software; you can redistribute it and/or modify |"
-	print "| it under the terms of the GNU General Public License as published by |"
-	print "| the Free Software Foundation; either version 2 of the License, or    |"
-	print "| (at your option) any later version.                                  |"
-	print "|                                                                      |"
-	print "| Author: Veronica Valeros, vero.valeros@gmail.com                     |"
-	print "+----------------------------------------------------------------------+"
-	print 
-	print "\nUsage: %s <options>" % sys.argv[0]
-	print "Options:"
-    	print "  -h, --help                           Show this help message and exit"
-      	print "  -V, --version                        Output version information and exit"
-	print "  -v, --verbose                        Be verbose"
-        print "  -D, --debug                          Debug"
-	print "  -u, --url                            URL to start crawling"
-        print "  -w, --write                          Save crawl output to a local file"
-        print "  -L, --common-log-format              Generate log of the requests in CLF"
-        print "  -e, --export-file-list               Creates a file with all the URLs to found files during crawling. You can use wget to download the entire list"
-        print "  -l, --crawl-limit                    Maximum links to crawl"
-	print "  -C, --crawl-depth                    Limit the crawling depth according to the value specified. Ex.: -C 2. "
-	print "  -d, --download-file                  Specify the file type of the files to download: png,pdf,jpeg,gif,css,x-javascript,x-shockwave-flash"
-        print "  -i, --interactive-download           Before downloading files allow user to specify manually the type of files to download"
-        print "  -U, --usuario                        User name for authentication"
-        print "  -P, --password                       Request password for authentication"
-	print
-	print "Example: python crawler.py -u http://www.example.com -w -C 10 -i "
-	print
-	sys.exit(1)
+    No parameters are needed.
+    """
+    print("+----------------------------------------------------------------------+")
+    print("| "+ sys.argv[0] + " Version "+ vernum +"                                      |")
+    print("| This program is free software; you can redistribute it and/or modify |")
+    print("| it under the terms of the GNU General Public License as published by |")
+    print("| the Free Software Foundation; either version 2 of the License, or    |")
+    print("| (at your option) any later version.                                  |")
+    print("|                                                                      |")
+    print("| Author: Veronica Valeros, vero.valeros@gmail.com                     |")
+    print("+----------------------------------------------------------------------+")
+    print()
+    print("\nUsage: %s <options>" % sys.argv[0])
+    print("Options:")
+    print("  -h, --help                           Show this help message and exit")
+    print("  -V, --version                        Output version information and exit")
+    print("  -v, --verbose                        Be verbose")
+    print("  -D, --debug                          Debug")
+    print("  -u, --url                            URL to start crawling")
+    print("  -w, --write                          Save crawl output to a local file")
+    print("  -L, --common-log-format              Generate log of the requests in CLF")
+    print("  -e, --export-file-list               Creates a file with all the URLs to found files during crawling. You can use wget to download the entire list")
+    print("  -l, --crawl-limit                    Maximum links to crawl")
+    print("  -C, --crawl-depth                    Limit the crawling depth according to the value specified. Ex.: -C 2. ")
+    print("  -d, --download-file                  Specify the file type of the files to download: png,pdf,jpeg,gif,css,x-javascript,x-shockwave-flash")
+    print("  -i, --interactive-download           Before downloading files allow user to specify manually the type of files to download")
+    print("  -U, --usuario                        User name for authentication")
+    print("  -P, --password                       Request password for authentication")
+    print()
+    print("Example: python crawler.py -u http://www.example.com -w -C 10 -i ")
+    print()
+    sys.exit(1)
 
 def printout(input_text,output_file):
+    """
+    To main functionalities are covered in this function:
+        1. Prints a text in the stdout
+        2. Write a text in the given file.
 
-	"""
-	To main functionalities are covered in this function:
-	1. Prints a text in the stdout
-	2. Write a text in the given file. 
+    Not return any value.
+    """
 
-	Not return any value.
-	"""
+    global debug
+    global verbose
 
-	global debug
-	global verbose
-
-	try:
-		print input_text 
-		if output_file:
-			try:
-				output_file.write(input_text+'\n')
-			except:
-				print '[!] Not saving data in output' 
-
-        except Exception as inst:
-		print '[!] Exception in printout() function'
-		print type(inst)     # the exception instance
-		print inst.args      # arguments stored in .args
-		print inst           # __str__ allows args to printed directly
-		x, y = inst          # __getitem__ allows args to be unpacked directly
-		print 'x =', x
-		print 'y =', y
-		return -1
+    try:
+        print(input_text)
+        if output_file:
+            try:
+                output_file.write(input_text+'\n')
+            except:
+                print('[!] Not saving data in output')
+    except Exception as inst:
+        print('[!] Exception in printout() function')
+        print(type(inst))     # the exception instance
+        print(inst.args)      # arguments stored in .args
+        print(inst)           # __str__ allows args to printed directly
+        x, y = inst          # __getitem__ allows args to be unpacked directly
+        print('x =', x)
+        print('y =', y)
+        return -1
 
 def check_url(url):
+    """
+    This function verifies that the given 'url' is well formatted, this means that it has defined a protocol and a domain. 
+    The urlparse.urlparse() function is used.
 
-	"""
-	This function verifies that the given 'url' is well formatted, this means that it has defined a protocol and a domain. 
-	The urlparse.urlparse() function is used. 
+    The return values can be 'True'/'False'.
+    """
 
-	The return values can be 'True'/'False'.
-	"""
+    global debug
+    global verbose
 
-	global debug
-	global verbose
-
-	try:
-		url_parsed = urlparse.urlparse(url)
-		if url_parsed.scheme and url_parsed.netloc:
-			return True
-		else:
-			return False
-
-        except Exception as inst:
-		print '[!] Exception in check_url() function'
-		print type(inst)     # the exception instance
-		print inst.args      # arguments stored in .args
-		print inst           # __str__ allows args to printed directly
-		x, y = inst          # __getitem__ allows args to be unpacked directly
-		print 'x =', x
-		print 'y =', y
-		return -1
+    try:
+        url_parsed = urllib.parse.urlparse(url)
+        if url_parsed.scheme and url_parsed.netloc:
+            return True
+        else:
+            return False
+    except Exception as inst:
+        print('[!] Exception in check_url() function')
+        print(type(inst))     # the exception instance
+        print(inst.args)      # arguments stored in .args
+        print(inst)           # __str__ allows args to printed directly
+        x, y = inst          # __getitem__ allows args to be unpacked directly
+        print('x =', x)
+        print('y =', y)
+        return -1
 
 def encode_url(url):
+    """
+    This function encode the URL according to Percentage or URL encoding.  
+    Actually only replaces a 'space' to '%20'.
 
-	"""
-	This function encode the URL according to Percentage or URL encoding.  
-	Actually only replaces a 'space' to '%20'.
+    Returns an URL.
+    """
 
-	Returns an URL.
-	"""
+    global debug
+    global verbose
 
-	global debug
-	global verbose
+    url_encoded = ""
+    try:
+        url_encoded = url.replace(" ","%20")
+        #url_encoded = url_encoded.replace("&amp;","&")
 
-	url_encoded = ""
-	try:	
-		url_encoded = url.replace(" ","%20")
-		#url_encoded = url_encoded.replace("&amp;","&")
-		
-		return url_encoded
+        return url_encoded
 
-        except Exception as inst:
-		print '[!] Exception in encode_url() function'
-		print type(inst)     # the exception instance
-		print inst.args      # arguments stored in .args
-		print inst           # __str__ allows args to printed directly
-		x, y = inst          # __getitem__ allows args to be unpacked directly
-		print 'x =', x
-		print 'y =', y
-		return -1
+    except Exception as inst:
+        print('[!] Exception in encode_url() function')
+        print(type(inst))     # the exception instance
+        print(inst.args)      # arguments stored in .args
+        print(inst)           # __str__ allows args to printed directly
+        x, y = inst          # __getitem__ allows args to be unpacked directly
+        print('x =', x)
+        print('y =', y)
+        return -1
 
 def log_line(request, response_code, response_size,log_file):
+    """
+    This function generates an output line of a given HTTP request in CLF (Common Log Format)
 
-	"""
-	This function generates an output line of a given HTTP request in CLF (Common Log Format)
+    Not return any value.
+    """
 
-	Not return any value.
-	"""
+    global debug
+    global verbose
 
-	global debug
-	global verbose
+    try:
+        try:
+            if response_size == -1:
+                content_size = '-'
+            else:
+                content_size = str(response_size)
+            local_hostname = socket.gethostname()
+            local_user = os.getenv('USER')
+            timestamp = time.strftime('%e/%b/%Y:%X %z').strip()
+            method = request.get_method()
+            protocol = 'HTTP/1.1'	# This is the version of the protocol that urllib2 uses
+            user_agent = request.get_header('User-agent')
+            url = request.get_full_url()
 
-	try:
-		try:
-			if response_size == -1:
-				content_size = '-'
-			else:
-				content_size = str(response_size)
-			local_hostname = socket.gethostname()
-			local_user = os.getenv('USER')
-			timestamp = time.strftime('%e/%b/%Y:%X %z').strip()
-			method = request.get_method()
-			protocol = 'HTTP/1.1'	# This is the version of the protocol that urllib2 uses
-			user_agent = request.get_header('User-agent')
-			url = request.get_full_url()
-			
-			# COMMON LOG FORMAT
-			log_file.write(local_hostname+' '+'-'+' '+local_user+' '+'['+timestamp+']'+' '+'"'+method+' '+url+' '+protocol+'"'+' '+str(response_code)+' '+content_size+' "-" "'+user_agent+'"\n')
+            # COMMON LOG FORMAT
+            log_file.write(local_hostname+' '+'-'+' '+local_user+' '+'['+timestamp+']'+' '+'"'+method+' '+url+' '+protocol+'"'+' '+str(response_code)+' '+content_size+' "-" "'+user_agent+'"\n')
 
-			# URLSNARF FORMAT
-			#log_file.write(local_hostname+' '+'- - '+'['+timestamp+']'+' '+'"'+method+' '+url+' '+protocol+'"'+' - - "-" "'+user_agent+'"\n')
-		except:
-			print 'Not logging the following request: {0}'.format(request.get_full_url())
+            # URLSNARF FORMAT
+            #log_file.write(local_hostname+' '+'- - '+'['+timestamp+']'+' '+'"'+method+' '+url+' '+protocol+'"'+' - - "-" "'+user_agent+'"\n')
+        except:
+            print('Not logging the following request: {0}'.format(request.get_full_url()))
 
-	except Exception as inst:
-		print '[!] Exception in log_line() function'
-		print type(inst)     # the exception instance
-		print inst.args      # arguments stored in .args
-		print inst           # __str__ allows args to printed directly
-		x, y = inst          # __getitem__ allows args to be unpacked directly
-		print 'x =', x
-		print 'y =', y
+    except Exception as inst:
+        print('[!] Exception in log_line() function')
+        print(type(inst))     # the exception instance
+        print(inst.args)      # arguments stored in .args
+        print(inst)           # __str__ allows args to printed directly
+        x, y = inst          # __getitem__ allows args to be unpacked directly
+        print('x =', x)
+        print('y =', y)
 
 def get_url(url, host, username, password, download_files_flag):
+    """
+    This function does a HTTP request of the given URL using the urllib2 python library. 
 
-	"""
-	This function does a HTTP request of the given URL using the urllib2 python library. 
+    Returns two values: [request,response]
+    """
 
-	Returns two values: [request,response]
-	"""
+    global debug
+    global verbose
+    global auth
 
-	global debug
-	global verbose
-	global auth
+    #Vector to save time responses of each request. For now it is a global variable.
+    global time_responses
 
-	#Vector to save time responses of each request. For now it is a global variable.
-	global time_responses
+    starttime=0
+    endtime=0
+    handler=""
 
+    try:
+        try:
+            starttime= time.time()
 
-	starttime=0
-	endtime=0
-	handler=""
+            url = encode_url(url)
+            if debug:
+                print('Encoded URL: '+url)
+            request = urllib.request.Request(url)
+            request.add_header('User-Agent','Mozilla/4.0 (compatible;MSIE 5.5; Windows NT 5.0)')
 
-	try:
-		try:
-			starttime= time.time()
+            if auth:
+                password_manager = urllib.request.HTTPPasswordMgrWithDefaultRealm()
+                password_manager.add_password(None, host, username, password)
 
-			url = encode_url(url)
-			if debug:
-				print 'Encoded URL: '+url
-			request = urllib2.Request(url)
-			request.add_header('User-Agent','Mozilla/4.0 (compatible;MSIE 5.5; Windows NT 5.0)')
-			
-			if auth:
-				password_manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
-				password_manager.add_password(None, host, username, password)
+                handler = urllib.request.HTTPBasicAuthHandler(password_manager)
 
-				handler = urllib2.HTTPBasicAuthHandler(password_manager)
+            if not download_files_flag:
+                #First we do a head request to see the type of url we are going to crawl
+                request.get_method = lambda : 'HEAD'
 
-			if not download_files_flag:
-				#First we do a head request to see the type of url we are going to crawl
-				request.get_method = lambda : 'HEAD'
+                if handler:
+                    opener_web = urllib.request.build_opener(handler)
+                else:
+                    opener_web = urllib.request.build_opener()
 
-				if handler:
-					opener_web = urllib2.build_opener(handler)
-				else: 
-					opener_web = urllib2.build_opener()
+                response = opener_web.open(request)
 
-				response = opener_web.open(request)
+                # If it is a file, we don get the content
+                if 'text/html' not in response.headers.typeheader:
+                    opener_web.close()
 
-				# If it is a file, we don get the content
-				if 'text/html' not in response.headers.typeheader:
-					opener_web.close()
-					
-					endtime= time.time()
-					time_responses.append(endtime-starttime)
+                    endtime= time.time()
+                    time_responses.append(endtime-starttime)
 
-					return [request,response]
-			
-			request.get_method = lambda : 'GET'
-			if handler:
-				opener_web = urllib2.build_opener(handler)
-			else: 
-				opener_web = urllib2.build_opener()
+                    return [request,response]
 
-			response = opener_web.open(request)
+            request.get_method = lambda : 'GET'
+            if handler:
+                opener_web = urllib.request.build_opener(handler)
+            else:
+                opener_web = urllib.request.build_opener()
 
-			opener_web.close()
+            response = opener_web.open(request)
 
-			endtime= time.time()
-			time_responses.append(endtime-starttime)
+            opener_web.close()
 
-			return [request,response]
+            endtime= time.time()
+            time_responses.append(endtime-starttime)
+
+            return [request,response]
 
 
-                except urllib2.HTTPError,error_code:
-			return [request,error_code.getcode()]
-		except urllib2.URLError,error_code:
-			error = error_code.args[0]
-			return [request,error[0]]
-		except socket.error,error_code:
-			error = error_code.args[0]
-			try:
-				error = error[0]
-			except:
-				pass
-			return [request,error]
-			
-	except KeyboardInterrupt:
-		try:
-			print '\t[!] Press a key to continue' 
-			raw_input()
-			return ["",1]
-		except KeyboardInterrupt:
-			return ["",0]
+        except urllib.error.HTTPError as error_code:
+            return [request,error_code.getcode()]
+        except urllib.error.URLError as error_code:
+            error = error_code.args[0]
+            return [request,error[0]]
+        except socket.error as error_code:
+            error = error_code.args[0]
+            try:
+                error = error[0]
+            except:
+                pass
+            return [request,error]
+
+    except KeyboardInterrupt:
+        try:
+            print('\t[!] Press a key to continue') 
+            input()
+            return ["",1]
+        except KeyboardInterrupt:
+            return ["",0]
         except Exception as inst:
-		print '[!] Exception in get_url() function'
-		print type(inst)     # the exception instance
-		print inst.args      # arguments stored in .args
-		print inst           # __str__ allows args to printed directly
-		x, y = inst          # __getitem__ allows args to be unpacked directly
-		print 'x =', x
-		print 'y =', y
-		return -1	
+            print('[!] Exception in get_url() function')
+            print(type(inst))     # the exception instance
+            print(inst.args)      # arguments stored in .args
+            print(inst)           # __str__ allows args to printed directly
+            x, y = inst          # __getitem__ allows args to be unpacked directly
+            print('x =', x)
+            print('y =', y)
+            return -1
+
 
 def get_links(link_host, link_path, content):
+    """
+    This function uses a regular expresion to find links in a HTML source page. 
+    The regular expresion used is defined in the 'linkregex' variable.
 
-	"""
-	This function uses a regular expresion to find links in a HTML source page. 
-	The regular expresion used is defined in the 'linkregex' variable.
+    Returns a vector of extracted links
+    """
 
-	Returns a vector of extracted links
-	"""
+    global debug
+    global verbose
+    global linkregex
 
-	global debug
-	global verbose
-	global linkregex
+    try:
+        # We obtain the links in the given response
+        links = linkregex.findall(content)
 
-	try:
-		# We obtain the links in the given response
-		links = linkregex.findall(content)
+        # We analyze each link 
+        for link in links:
+            try:
+                link_clean = link.strip(' ')
+            except:
+                print('error')
+            parsed_link = urllib.parse.urlparse(link_clean)
+            if not parsed_link.scheme and not parsed_link.netloc:
+                if link_clean.startswith('/'):
+                    if link_host.endswith('/'):
+                        links[links.index(link)] = link_host.rstrip('/')+link_clean
+                    else:
+                        links[links.index(link)] = link_host+link_clean
+                elif link_clean.startswith('./'):
+                    links[links.index(link)] = link_host+link_clean
+                else:
+                    links[links.index(link)] = link_path+link_clean
+            else:
+                links[links.index(link)] = link_clean
 
-		# We analyze each link 
-		for link in links:
-			try:
-				link_clean = link.strip(' ')
-			except:
-				print 'error'
-			parsed_link = urlparse.urlparse(link_clean)
-			if not parsed_link.scheme and not parsed_link.netloc:
-				if link_clean.startswith('/'):
-					if link_host.endswith('/'):
-						links[links.index(link)] = link_host.rstrip('/')+link_clean
-					else:
-						links[links.index(link)] = link_host+link_clean
-				elif link_clean.startswith('./'):
-						links[links.index(link)] = link_host+link_clean
-				else:
-					links[links.index(link)] = link_path+link_clean
-			else:
-				links[links.index(link)] = link_clean
+        for link in links:
+            links[links.index(link)] = link.split('#')[0]
 
-		for link in links:
-			links[links.index(link)] = link.split('#')[0]
+        return links
 
-		return links
-
-        except Exception as inst:
-		print '[!] Exception in get_links() function'
-		print type(inst)     # the exception instance
-		print inst.args      # arguments stored in .args
-		print inst           # __str__ allows args to printed directly
-		x, y = inst          # __getitem__ allows args to be unpacked directly
-		print 'x =', x
-		print 'y =', y
-		return -1
+    except Exception as inst:
+        print('[!] Exception in get_links() function')
+        print(type(inst))     # the exception instance
+        print(inst.args)      # arguments stored in .args
+        print(inst)           # __str__ allows args to printed directly
+        x, y = inst          # __getitem__ allows args to be unpacked directly
+        print('x =', x)
+        print('y =', y)
+        return -1
 
 def crawl(url,usuario,password,output_filename,crawl_limit=0,log=False,log_filename='none',crawl_depth=0):
 	
@@ -500,7 +492,7 @@ def crawl(url,usuario,password,output_filename,crawl_limit=0,log=False,log_filen
 				printout('   [-] '+str(url),output_filename)
 
 				# We extract the host of the crawled URL	
-				parsed_url = urlparse.urlparse(url)
+				parsed_url = urllib.parse.urlparse(url)
 				host = parsed_url.scheme + '://' + parsed_url.netloc
 
 				if parsed_url.path.endswith('/'):
@@ -538,8 +530,8 @@ def crawl(url,usuario,password,output_filename,crawl_limit=0,log=False,log_filen
 								# We add new links to the list of urls to crawl
 								for link in links_extracted:
 									if debug:
-										print '\t   [i] {0}'.format(link)
-									parsed_link= urlparse.urlparse(link)
+										print('\t   [i] {0}'.format(link))
+									parsed_link= urllib.parse.urlparse(link)
 									link_host = parsed_link.scheme + '://' + parsed_link.netloc
 
 									# We just crawl URLs of the same host
@@ -557,27 +549,27 @@ def crawl(url,usuario,password,output_filename,crawl_limit=0,log=False,log_filen
 					if response==1:
 						continue
 					if response==0:
-						print '[!] Skypping the rest of the urls'
+						print('[!] Skypping the rest of the urls')
 						break
 
 			except KeyboardInterrupt:
 				try:
-					print '[!] Press a key to continue' 
-					raw_input()
+					print('[!] Press a key to continue') 
+					input()
 					continue
 				except KeyboardInterrupt:
-					print '[!] Exiting'
+					print('[!] Exiting')
 					break	
 
 			except Exception as inst:
-				print '[!] Exception inside crawl() function. While statement rise the exception.'
-				print type(inst)     # the exception instance
-				print inst.args      # arguments stored in .args
-				print inst           # __str__ allows args to printed directly
+				print('[!] Exception inside crawl() function. While statement rise the exception.')
+				print(type(inst))     # the exception instance
+				print(inst.args)      # arguments stored in .args
+				print(inst)           # __str__ allows args to printed directly
 				x, y = inst          # __getitem__ allows args to be unpacked directly
-				print 'x =', x
-				print 'y =', y
-				print 'Response: {0}'.format(response)
+				print('x =', x)
+				print('y =', y)
+				print('Response: {0}'.format(response))
 				break
 		
 		printout('[+] Total urls crawled: '+str(len(links_crawled)),output_filename)
@@ -587,21 +579,21 @@ def crawl(url,usuario,password,output_filename,crawl_limit=0,log=False,log_filen
 
 	except KeyboardInterrupt:
 		try:
-			print '[!] Press a key to continue' 
-			raw_input()
+			print('[!] Press a key to continue') 
+			input()
 			return 1
 		except KeyboardInterrupt:
-			print '[!] Keyboard interruption. Exiting'
+			print('[!] Keyboard interruption. Exiting')
 			return 1
        
 	except Exception as inst:
-		print '[!] Exception in crawl() function'
-		print type(inst)     # the exception instance
-		print inst.args      # arguments stored in .args
-		print inst           # __str__ allows args to printed directly
+		print('[!] Exception in crawl() function')
+		print(type(inst))     # the exception instance
+		print(inst.args)      # arguments stored in .args
+		print(inst)           # __str__ allows args to printed directly
 		x, y = inst          # __getitem__ allows args to be unpacked directly
-		print 'x =', x
-		print 'y =', y
+		print('x =', x)
+		print('y =', y)
 		return -1
 
 def external_links(root_url,external_vector,output_filename):
@@ -618,7 +610,7 @@ def external_links(root_url,external_vector,output_filename):
 	external_websites = []
 
 	try:
-		parsed_url = urlparse.urlparse(root_url)
+		parsed_url = urllib.parse.urlparse(root_url)
 		link_host = parsed_url.scheme + '://' + parsed_url.netloc
 		domain = parsed_url.netloc.split('www.')[-1]
 
@@ -626,7 +618,7 @@ def external_links(root_url,external_vector,output_filename):
 		printout('[+] Related subdomains found: ',output_filename)
 		tmp=[]
 		for link in external_vector:
-			parsed = urlparse.urlparse(link)
+			parsed = urllib.parse.urlparse(link)
 			if domain in parsed.netloc:
 				subdomain = parsed.scheme+'://'+parsed.netloc
 				if subdomain not in tmp:
@@ -637,13 +629,13 @@ def external_links(root_url,external_vector,output_filename):
 		printout('',output_filename)
 		printout('[+] Email addresses found: ',output_filename)
 		for link in external_vector:
-			if 'mailto' in urlparse.urlparse(link).scheme:
+			if 'mailto' in urllib.parse.urlparse(link).scheme:
 				printout('   [-] '+link.split(':')[1].split('?')[0],output_filename)
         
 		printout('',output_filename)
 		printout('[+] This website have references to the following websites: ',output_filename)
 		for link in external_vector:
-			parsed = urlparse.urlparse(link)
+			parsed = urllib.parse.urlparse(link)
 			if parsed.netloc:
 				if domain not in parsed.netloc:
 					external_domain = parsed.scheme+'://'+parsed.netloc 
@@ -655,13 +647,13 @@ def external_links(root_url,external_vector,output_filename):
 		printout('[+] Total:  '+str(len(external_websites)),output_filename)
       
 	except Exception as inst:
-		print '[!] Exception in external_links() function'
-		print type(inst)     # the exception instance
-		print inst.args      # arguments stored in .args
-		print inst           # __str__ allows args to printed directly
+		print('[!] Exception in external_links() function')
+		print(type(inst))     # the exception instance
+		print(inst.args)      # arguments stored in .args
+		print(inst)           # __str__ allows args to printed directly
 		x, y = inst          # __getitem__ allows args to be unpacked directly
-		print 'x =', x
-		print 'y =', y
+		print('x =', x)
+		print('y =', y)
 		return -1
 
 
@@ -714,7 +706,7 @@ def indexing_search(usuario, password,links_vector,output_filename):
 			dots=dots+'.'
 			try:
 				# We extract the host of the crawled URL	
-				parsed_url = urlparse.urlparse(directory)
+				parsed_url = urllib.parse.urlparse(directory)
 				host = parsed_url.scheme + '://' + parsed_url.netloc
 				
 				# We obtain the response of the URL
@@ -747,16 +739,16 @@ def indexing_search(usuario, password,links_vector,output_filename):
 					if response==1:
 						continue
 					if response==0:
-						print '[!] Skypping the rest of the directories'
+						print('[!] Skypping the rest of the directories')
 						break
 
 			except KeyboardInterrupt:
 				try:
-					print '[!] Press a key to continue' 
-					raw_input()
+					print('[!] Press a key to continue') 
+					input()
 					pass
 				except KeyboardInterrupt:
-					print '[!] Exiting'
+					print('[!] Exiting')
 					break	
 
 		printout('\n[+] Total directories with indexing: '+str(len(indexing)),output_filename)
@@ -765,13 +757,13 @@ def indexing_search(usuario, password,links_vector,output_filename):
 		return [directories,indexing]
 
 	except Exception as inst:
-		print '[!] Exception in indexing_search() function'
-		print type(inst)     # the exception instance
-		print inst.args      # arguments stored in .args
-		print inst           # __str__ allows args to printed directly
+		print('[!] Exception in indexing_search() function')
+		print(type(inst))     # the exception instance
+		print(inst.args)      # arguments stored in .args
+		print(inst)           # __str__ allows args to printed directly
 		x, y = inst          # __getitem__ allows args to be unpacked directly
-		print 'x =', x
-		print 'y =', y
+		print('x =', x)
+		print('y =', y)
 		return 1
 
 def report_files(export_file_list,files_vector,output_filename):
@@ -790,12 +782,12 @@ def report_files(export_file_list,files_vector,output_filename):
 				try:
 					local_file = open(output_name.rpartition('.')[0]+'.files','w')
 					printout('[+] Exporting list of files found to: '+output_name.rpartition('.')[0]+'.files',output_filename)
-				except OSError,error:
+				except OSError as error:
 					if 'File exists' in error:
 							printout('[+] Exporting list of files found to: '+output_name.rpartition('.')[0]+'.files',output_filename)
 							pass
 					else:
-						print '[+] Error creating output file to export list of files.'
+						print('[+] Error creating output file to export list of files.')
 						export_file_list=False
 			
 			# We print the files found during the crawling
@@ -809,118 +801,116 @@ def report_files(export_file_list,files_vector,output_filename):
 			local_file.close()
 
 	except Exception as inst:
-		print '[!] Exception in report_files() function'
-		print type(inst)     # the exception instance
-		print inst.args      # arguments stored in .args
-		print inst           # __str__ allows args to printed directly
+		print('[!] Exception in report_files() function')
+		print(type(inst))     # the exception instance
+		print(inst.args)      # arguments stored in .args
+		print(inst)           # __str__ allows args to printed directly
 		x, y = inst          # __getitem__ allows args to be unpacked directly
-		print 'x =', x
-		print 'y =', y
+		print('x =', x)
+		print('y =', y)
 		return 1
 
 def download_files(extensions_to_download,files_vector,usuario,password,interactive_flag,output_filename):
+    """
+    This function downloads a set of files which extensions match with the given in extensions_to_download.
+    If the interactive_flag is set on True, then the user can select manually the files to download choosing from the files extensions found during crawling.
 
-	"""
-	This function downloads a set of files which extensions match with the given in extensions_to_download.
-	If the interactive_flag is set on True, then the user can select manually the files to download choosing from the files 
-	extensions found during crawling.
+    This function returns a list of extensions in the found files during crawling.
+    """
 
-	This function returns a list of extensions in the found files during crawling.
-	"""
+    global debug
+    global verbose
 
-	global debug
-	global verbose
+    list_of_files_to_download=[]
+    extensions_found=[]
 
-	list_of_files_to_download=[]
-	extensions_found=[]
+    try:
+        if len(files_vector)>0:
+            # Looking for the types of files found during crawling	
+            for [i,j] in files_vector:
+                if j not in extensions_found:
+                    extensions_found.append( j )
 
-	try:
-		if len(files_vector)>0:
-			# Looking for the types of files found during crawling	
-			for [i,j] in files_vector:
-				if j not in extensions_found:
-					extensions_found.append( j )
-
-			#If the interactive mode is enabled, we ask user which files to downlaod
-			if interactive_flag:
-			 	print	
-				print '[+] Starting to download files'
-				print '[+] The following files were found during crawling:'
-				print '   ',
-				print extensions_found
-				print '    Select next wich type of files you want to download. Ex.: png,pdf,css.'
-				extensions_to_download= raw_input('    ')
+            #If the interactive mode is enabled, we ask user which files to downlaod
+            if interactive_flag:
+                print()
+                print('[+] Starting to download files')
+                print('[+] The following files were found during crawling:')
+                print('   ', end=' ')
+                print(extensions_found)
+                print('    Select next wich type of files you want to download. Ex.: png,pdf,css.')
+                extensions_to_download= input('    ')
 
 			# Looking for files matching the download criteria	
-			for [i,j] in files_vector:
-				if (j in extensions_to_download):
-					list_of_files_to_download.append(i)	
+            for [i,j] in files_vector:
+                if (j in extensions_to_download):
+                    list_of_files_to_download.append(i)
 
-			#  If there is at least one file matching the download criteria, we create a output directory and download them
-			if ( len(list_of_files_to_download) > 0 ):
-				# Fetching found files
-				printout('',output_filename)
-				printout('[+] Downloading specified files: '+extensions_to_download,output_filename)
-				printout('[+] Total files to download: '+str(len(list_of_files_to_download)),output_filename)
+            #  If there is at least one file matching the download criteria, we create a output directory and download them
+            if ( len(list_of_files_to_download) > 0 ):
+                # Fetching found files
+                printout('',output_filename)
+                printout('[+] Downloading specified files: '+extensions_to_download,output_filename)
+                printout('[+] Total files to download: '+str(len(list_of_files_to_download)),output_filename)
 
-				# Creating output directory download files
-				try:
-					output_directory = output_name.rpartition('.')[0]+'_files'
-					os.mkdir(output_directory)
-					printout('[+] Output directory: '+output_directory,output_filename)
-				except OSError, error:
-					if 'File exists' in error:
-						print '\n[!] Directory already exists. Press a key to ovewrite or CTRL+C cancel download'
-						try:
-							raw_input()
-							printout('[+] Output directory: '+output_directory,output_filename)
-						except KeyboardInterrupt:
-							printout('\n[+] Download files aborted',output_filename)
-							return 1 
-					else:
-						printout('\n[!] Download files aborted. Error while creating output directory.',output_filename)
-
-
-				#Downloading files
-				for i in list_of_files_to_download:
-					printout('   [-] '+i,output_filename)
-
-					# We extract the host of the crawled URL	
-					parsed_url = urlparse.urlparse(i)
-					host = parsed_url.scheme + '://' + parsed_url.netloc
-
-					[request,response] = get_url(i.replace(' ','%20'), host, usuario, password, True)		
+                # Creating output directory download files
+                try:
+                    output_directory = output_name.rpartition('.')[0]+'_files'
+                    os.mkdir(output_directory)
+                    printout('[+] Output directory: '+output_directory,output_filename)
+                except OSError as error:
+                    if 'File exists' in error:
+                        print('\n[!] Directory already exists. Press a key to ovewrite or CTRL+C cancel download')
+                        try:
+                            input()
+                            printout('[+] Output directory: '+output_directory,output_filename)
+                        except KeyboardInterrupt:
+                            printout('\n[+] Download files aborted',output_filename)
+                            return 1
+                    else:
+                        printout('\n[!] Download files aborted. Error while creating output directory.',output_filename)
 
 
-					if response:
-						if not isinstance(response, int):
-							response = response.read()
-							try:
-								local_file=open(output_directory+'/'+i.rpartition('/')[2],'w')
-							except OSError, error:
-								if 'File exists' in error:
-									pass
-								else:
-									printout('   [-] Impossible to create output file for: '+output_directory+'/'+i.rpartition('/')[2],output_filename)
+                #Downloading files
+                for i in list_of_files_to_download:
+                    printout('   [-] '+i,output_filename)
 
-							if local_file:
-								local_file.write(response)
-								local_file.close()
+                    # We extract the host of the crawled URL	
+                    parsed_url = urllib.parse.urlparse(i)
+                    host = parsed_url.scheme + '://' + parsed_url.netloc
 
-			printout('[+] Download complete',output_filename)
-			printout('',output_filename)
+                    [request,response] = get_url(i.replace(' ','%20'), host, usuario, password, True)		
 
-			return extensions_found
-					
-	except Exception as inst:
-		print '[!] Exception in download_files() function'
-		print type(inst)     # the exception instance
-		print inst.args      # arguments stored in .args
-		print inst           # __str__ allows args to printed directly
-		x, y = inst          # __getitem__ allows args to be unpacked directly
-		print 'x =', x
-		print 'y =', y
-		return -1
+
+                    if response:
+                        if not isinstance(response, int):
+                            response = response.read()
+                            try:
+                                local_file=open(output_directory+'/'+i.rpartition('/')[2],'w')
+                            except OSError as error:
+                                if 'File exists' in error:
+                                    pass
+                                else:
+                                    printout('   [-] Impossible to create output file for: '+output_directory+'/'+i.rpartition('/')[2],output_filename)
+
+                            if local_file:
+                                local_file.write(response)
+                                local_file.close()
+
+            printout('[+] Download complete',output_filename)
+            printout('',output_filename)
+
+            return extensions_found
+
+    except Exception as inst:
+        print('[!] Exception in download_files() function')
+        print(type(inst))     # the exception instance
+        print(inst.args)      # arguments stored in .args
+        print(inst)           # __str__ allows args to printed directly
+        x, y = inst          # __getitem__ allows args to be unpacked directly
+        print('x =', x)
+        print('y =', y)
+        return -1
 
 ####################	
 #STATISTICS FUNCTION
@@ -935,7 +925,7 @@ def statistics(global_time, directories, indexing, links_crawled, files, extensi
 	amt_files_per_extension = {}
 
 	try:
-		print
+		print()
 
 		if len(links_crawled) > 1:
 			# Calculating avg time per query
@@ -952,33 +942,33 @@ def statistics(global_time, directories, indexing, links_crawled, files, extensi
 			for [link,extension] in files:
 				amt_files_per_extension[extension] += 1
 
-			print '___________'
-			print
-			print 'Summary'
-			print '___________'
-			print
+			print('___________')
+			print()
+			print('Summary')
+			print('___________')
+			print()
 			if output_filename:
-				print '[+] Output file stored at: {0}'.format(os.path.realpath(output_name))
-				print
-			print '[+] Total elapsed time: {0} seconds ({1} min)'.format(round(global_time,2),round((global_time/60),2))
-			print '[+] AVG time per query: {0} seconds'.format(round(avg_time_per_query,2))
-			print
-			print '[+] Total links crawled\t{0}'.format(str(len(links_crawled)-len(files)))
-			print '[+] Total directories\t{0}'.format(str(len(directories)))
-			print '   [-] Indexing\t{0}'.format(str(len(indexing)))
-			print '[+] Total found files\t{0}'.format(str(len(files)))
-			for key in amt_files_per_extension.keys():
-				print '       | '+key+'\t'+str(amt_files_per_extension[key])
+				print('[+] Output file stored at: {0}'.format(os.path.realpath(output_name)))
+				print()
+			print('[+] Total elapsed time: {0} seconds ({1} min)'.format(round(global_time,2),round((global_time/60),2)))
+			print('[+] AVG time per query: {0} seconds'.format(round(avg_time_per_query,2)))
+			print()
+			print('[+] Total links crawled\t{0}'.format(str(len(links_crawled)-len(files))))
+			print('[+] Total directories\t{0}'.format(str(len(directories))))
+			print('   [-] Indexing\t{0}'.format(str(len(indexing))))
+			print('[+] Total found files\t{0}'.format(str(len(files))))
+			for key in list(amt_files_per_extension.keys()):
+				print('       | '+key+'\t'+str(amt_files_per_extension[key]))
 
 
 	except Exception as inst:
-		print '[!] Exception in statistics() function'
-		print type(inst)     # the exception instance
-		print inst.args      # arguments stored in .args
-		print inst           # __str__ allows args to printed directly
+		print('[!] Exception in statistics() function')
+		print(type(inst))     # the exception instance
+		print(inst.args)      # arguments stored in .args
+		print(inst)           # __str__ allows args to printed directly
 		x, y = inst          # __getitem__ allows args to be unpacked directly
-		print 'x =', x
-		print 'y =', y
+		print('x =', x)
+		print('y =', y)
 		return -1
 
 
@@ -1046,16 +1036,16 @@ def main():
 	try:
 
 		if debug:
-			print '[+] Debugging mode enabled'
+			print('[+] Debugging mode enabled')
 
 		if check_url(url_to_crawl):
 
 			date = str(datetime.datetime.today()).rpartition('.')[0].replace('-','').replace(' ','_').replace(':','')
 			if save_output:
-				output_name = urlparse.urlparse(url_to_crawl).netloc+'.crawler'
+				output_name = urllib.parse.urlparse(url_to_crawl).netloc+'.crawler'
 				try:
 					output_file = open(output_name,'w')
-				except OSError, error:
+				except OSError as error:
 					if 'File exists' in error:
 						pass
 					else:
@@ -1064,10 +1054,10 @@ def main():
 				output_name = ""
 			
 			if log:
-				log_name = date +'_'+ urlparse.urlparse(url_to_crawl).netloc + '.log'
+				log_name = date +'_'+ urllib.parse.urlparse(url_to_crawl).netloc + '.log'
 				try:
 					log_file = open(log_name,'w')
-				except OSError, error:
+				except OSError as error:
 					if 'File exists' in error:
 						pass
 					else:
@@ -1108,23 +1098,23 @@ def main():
 				pass
 
 		else:
-			print
-			print '[!] Check the URL provided, it should be like: http://www.example.com or http://asdf.com'
-			print
+			print()
+			print('[!] Check the URL provided, it should be like: http://www.example.com or http://asdf.com')
+			print()
 			usage()
 
 	except KeyboardInterrupt:
 		# CTRL-C pretty handling
-		print 'Keyboard Interruption!. Exiting.'
+		print('Keyboard Interruption!. Exiting.')
 		sys.exit(1)
 	except Exception as inst:
-		print '[!] Exception in main() function'
-		print type(inst)     # the exception instance
-		print inst.args      # arguments stored in .args
-		print inst           # __str__ allows args to printed directly
+		print('[!] Exception in main() function')
+		print(type(inst))     # the exception instance
+		print(inst.args)      # arguments stored in .args
+		print(inst)           # __str__ allows args to printed directly
 		x, y = inst          # __getitem__ allows args to be unpacked directly
-		print 'x =', x
-		print 'y =', y
+		print('x =', x)
+		print('y =', y)
 		sys.exit(1)
 
 
