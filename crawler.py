@@ -23,16 +23,14 @@
 import sys
 import re
 import getopt
-import urllib.request, urllib.error, urllib.parse
 import urllib.parse
-import http.client
-import copy
 import os
 import time
 import socket
 import datetime
-
 import getpass
+from urllib3.exceptions import HTTPError
+import urllib3
 
 ####################
 # Global Variables
