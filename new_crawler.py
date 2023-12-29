@@ -2,6 +2,7 @@ import argparse
 import os
 import re
 import logging
+from lib.fetch_website import fetch_website
 
 
 def setup_logging(verbose, debug, url):
@@ -10,7 +11,6 @@ def setup_logging(verbose, debug, url):
     URL is used to create a unique log file for each URL.
     """
     log_directory = "logs"
-
     level = logging.DEBUG if debug else (logging.INFO if verbose or not debug and not verbose else logging.WARNING)
 
     # Replace non-alphanumeric characters with underscore
@@ -19,9 +19,23 @@ def setup_logging(verbose, debug, url):
     os.makedirs(log_directory, exist_ok=True)
     log_filename = f"{log_directory}/{sanitized_url}.log"
 
-    logging.basicConfig(filename=log_filename, filemode='a', format='%(asctime)s - %(levelname)s - %(message)s', level=level)
-    logging.info('Web crawler starting for %s', url)
+    # Create a logger
+    logger = logging.getLogger()
+    logger.setLevel(level)
 
+    # File handler for logging to a file
+    file_handler = logging.FileHandler(log_filename, mode='a')
+    file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(file_formatter)
+    logger.addHandler(file_handler)
+
+    # Console handler for logging to stdout
+    console_handler = logging.StreamHandler()
+    console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(console_formatter)
+    logger.addHandler(console_handler)
+
+    logging.info('Web crawler starting for %s', url)
 
 def main():
     """
@@ -32,7 +46,11 @@ def main():
 
     setup_logging(args.verbose, args.debug, args.url)
     logging.debug('Debug mode is on')
+
     # Further implementation goes here
+    root_url = args.url
+    result = fetch_website(root_url, args.username, args.password)
+    logging.info('Crawled: %s - %s', root_url, result['status_code'])
 
 
 def create_parser():
@@ -51,7 +69,7 @@ def create_parser():
     parser.add_argument('-C', '--crawl-depth', type=int, help='Limit the crawling depth according to the value specified')
     parser.add_argument('-d', '--download-file', type=str, help='Specify the file type of the files to download')
     parser.add_argument('-i', '--interactive-download', action='store_true', help='Before downloading files allow user to specify manually the type of files to download')
-    parser.add_argument('-U', '--usuario', type=str, help='User name for authentication')
+    parser.add_argument('-U', '--username', type=str, help='User name for authentication')
     parser.add_argument('-P', '--password', type=str, help='Request password for authentication')
     return parser
 
