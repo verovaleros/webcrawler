@@ -12,12 +12,11 @@ Ported Features
 * Generates a summary at the end of the crawling with statistics about the crawl results, including the number of crawled URLs, external URLs, files, errors, failed requests, and total transferred data.
 * Uses CTRL-C to stop current crawler stages and save the status.
 * Export the files identified in separate files and the errors and failed requests.
+* Uses beautifulsoup4 for finding absolute and relative links.
   
 Unported features
 ========
 * Implemented HEAD method for analyzing file types before crawling. This feature improves the speed of the crawler significantly.
-* Uses regular expressions to find "href", "src", and "content" links.
-* Identifies relative links.
 * Identifies non-html files and shows them.
 * Does not crawl non-html files.
 * Identifies directory indexing.
