@@ -14,6 +14,7 @@ import requests
 from collections import deque
 from urllib.parse import urlparse
 from lib.fetch_website import fetch_website
+from lib.parse_website import find_all_links
 from lib.utils import store_set_to_file
 from lib.utils import load_set_from_file
 from lib.utils import load_queue_from_file
@@ -86,8 +87,12 @@ def main():
     urls_files = set()
 
     total_content_size = 0
-    url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+|ftp://[^\s<>"]+'
+
+    # Parse the URL to get the base url and scheme
+    # which will be used to store data and reconstruct
+    # relative URLs found in the HTML content.
     base_url = urlparse(args.url).netloc
+    base_scheme = urlparse(args.url).scheme
 
     setup_logging(args.verbose, args.debug, base_url)
 
@@ -107,10 +112,6 @@ def main():
                      len(urls_extern),
                      len(urls_errors)
                      )
-        # In case the stored sets are empty
-        if args.url not in urls_parsed and args.url not in urls_queued:
-            urls_queued.append(args.url)
-
     else:
         # Process the root URL
         urls_queued.append(args.url)
@@ -119,13 +120,14 @@ def main():
 
     # Limit the URLs processed according to the input limit
     while len(urls_parsed) <= args.crawl_limit and len(urls_queued) > 0:
+        # Create one session to run all the HTTP requests through it
         with requests.Session() as session:
-
             try:
                 current_url = urls_queued.popleft()
 
                 response = fetch_website(session, current_url, args.username, args.password)
 
+                # Attempt to calculate the content size
                 if response and response.content:
                     total_content_size += len(response.content)
                     content_size_kb = len(response.content) / 1024
@@ -134,7 +136,8 @@ def main():
 
                 logging.info('CRAWLED - %s - %s - %.2f Kb', current_url, response.status_code, len(response.content)/1024)
 
-                # Parse the response status codes
+                # Depending on the response status,
+                # store the URL in the correct set.
                 if response.ok:
                     urls_parsed.add(current_url)
                     if response.headers.get('Location', None) is not None:
@@ -142,10 +145,11 @@ def main():
                 else:
                     urls_failed.add(current_url)
 
-                # Parse the response content
+                # Parse the response content to find
+                # all outlinks from the HTML reponse
                 content_type = response.headers.get('Content-Type', '').lower()
                 if 'text/html' in content_type:
-                    found_urls = re.findall(url_pattern, response.content.decode('utf-8'))
+                    found_urls = find_all_links(response.content, base_scheme, base_url)
                     logging.debug('Found %i new URLs', len(found_urls))
 
                     for new_url in found_urls:
@@ -163,6 +167,7 @@ def main():
                 break
             except Exception as err:
                 logging.error('Error processing URL: %s', current_url)
+                print(err)
                 urls_errors.add(current_url)
                 continue
 
