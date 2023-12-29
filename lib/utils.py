@@ -3,7 +3,7 @@ Set of common util functions to supopr the
 functionality of the web crawler
 """
 
-def store_set_to_file(set_to_save_to_disk, output_dir, file_name):
+def store_set_to_file(set_to_save_to_disk, output_directory, file_name):
     """
     Writes the contents of a set to a file, with each element on a new line.
 
