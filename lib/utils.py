@@ -4,6 +4,43 @@ functionality of the web crawler
 """
 import pickle
 from collections import deque
+from urllib.parse import urlparse
+
+
+def is_valid_url(url):
+    """
+    Validates if the given URL has a valid format.
+
+    :param url: URL to validate.
+    :return: True if the URL is valid, False otherwise.
+    """
+    parsed = urlparse(url)
+    return bool(parsed.scheme) and bool(parsed.netloc)
+
+
+def add_url_to_queue(url, url_queue):
+    """
+    Adds a URL to the queue after validating and normalizing it, and ensuring it's not a duplicate.
+
+    :param url: URL to add.
+    :param url_queue: Queue (deque) to add the URL to.
+    """
+    url = url.strip().lower()
+    if is_valid_url(url):
+        url_queue.append(url)
+
+
+def add_url_to_set(url, url_set):
+    """
+    Adds a URL to the set after validating and normalizing it.
+
+    :param url: URL to add.
+    :param url_set: Set to add the URL to.
+    """
+    url = url.strip().lower()
+    if is_valid_url(url) and url not in url_set:
+        url_set.add(url)
+
 
 def store_set_to_file(set_to_save_to_disk, output_directory, file_name):
     """
