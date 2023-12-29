@@ -1,3 +1,11 @@
+"""
+Web Crawler Security Tool v2.0.0
+
+A simple Python web crawler that can follow links and
+obtain all the structure of a website, including files.
+"""
+# pylint: disable=line-too-long
+
 import argparse
 import os
 import re
