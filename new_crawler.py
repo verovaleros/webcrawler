@@ -13,6 +13,7 @@ import logging
 import requests
 from collections import deque
 from lib.fetch_website import fetch_website
+from urllib.parse import urlparse
 
 
 def create_parser():
@@ -76,40 +77,75 @@ def main():
     urls_parsed = set()
     urls_queued = deque()
     urls_failed = set()
+    urls_extern = set()
+    urls_errors = set()
+    urls_files = set()
+
+    url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+|ftp://[^\s<>"]+'
 
     setup_logging(args.verbose, args.debug, args.url)
     logging.debug('Debug mode is on')
 
     # Process the root URL
     urls_queued.append(args.url)
-    logging.info('Web crawling starting on base URL %s', args.url)
+    base_url = urlparse(args.url).netloc
+    logging.info('Web crawling starting on base URL %s (%s)', args.url, base_url)
 
 
     # Limit the URLs processed according to the input limit
     while len(urls_parsed) <= args.crawl_limit and len(urls_queued) > 0:
         with requests.Session() as session:
 
-            current_url = urls_queued.popleft()
+            try:
+                current_url = urls_queued.popleft()
 
-            response = fetch_website(session, current_url, args.username, args.password)
+                response = fetch_website(session, current_url, args.username, args.password)
 
-            logging.info('CRAWLED - %s - %s - %.2f Kb', current_url, response.status_code, len(response.content)/1024)
+                if response and response.content:
+                    content_size_kb = len(response.content) / 1024
+                else:
+                    content_size_kb = 0  # Default size if there's no content
 
-            # Parse the response status codes
-            if response.ok:
-                urls_parsed.add(current_url)
-                if response.headers.get('Location', None) is not None:
-                    urls_queued.append(response.headers.get('Location', None))
-            else:
-                urls_failed.add(current_url)
+                logging.info('CRAWLED - %s - %s - %.2f Kb', current_url, response.status_code, len(response.content)/1024)
 
-            # Parse the response content
+                # Parse the response status codes
+                if response.ok:
+                    urls_parsed.add(current_url)
+                    if response.headers.get('Location', None) is not None:
+                        urls_queued.append(response.headers.get('Location', None))
+                else:
+                    urls_failed.add(current_url)
+
+                # Parse the response content
+                content_type = response.headers.get('Content-Type', '').lower()
+                if 'text/html' in content_type:
+                    found_urls = re.findall(url_pattern, response.content.decode('utf-8'))
+                    logging.debug('Found %i new URLs', len(found_urls))
+
+                    for new_url in found_urls:
+                        if new_url not in urls_parsed:
+                            logging.debug('FETCHED - %s', new_url)
+                            found_base_url = urlparse(new_url).netloc
+                            if base_url in found_base_url and new_url not in urls_queued:
+                                urls_queued.append(new_url)
+                            elif new_url not in urls_extern:
+                                urls_extern.add(new_url)
+                elif current_url not in urls_files:
+                    urls_files.add(current_url)
+            except Exception as err:
+                logging.error('Error processing URL: %s', current_url)
+                urls_errors.add(current_url)
+                continue
+
 
     # Log summary of the results
-    logging.info('SUMMARY - Crawled: %i, Queued: %i, Failed: %i ',
+    logging.info('SUMMARY - Crawled: %i, Queued: %i, Failed: %i, Files: %i, External: %i, Errors: %i',
                  len(urls_parsed),
                  len(urls_queued),
-                 len(urls_failed)
+                 len(urls_failed),
+                 len(urls_files),
+                 len(urls_extern),
+                 len(urls_errors)
                  )
 
 if __name__ == "__main__":
