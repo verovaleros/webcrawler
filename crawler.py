@@ -15,6 +15,8 @@ from collections import deque
 from urllib.parse import urlparse
 from lib.fetch_website import fetch_website
 from lib.utils import store_set_to_file
+from lib.utils import load_set_from_file
+from lib.utils import load_queue_from_file
 
 
 def create_parser():
@@ -25,6 +27,7 @@ def create_parser():
     parser.add_argument('-V', '--version', action='version', version='Crawler 1.0')
     parser.add_argument('-v', '--verbose', action='store_true', help='Be verbose')
     parser.add_argument('-D', '--debug', action='store_true', help='Debug')
+    parser.add_argument('-r', '--resume', action='store_true', help='Resume existing crawling session')
     parser.add_argument('-u', '--url', required=True, type=str, help='URL to start crawling')
     parser.add_argument('-w', '--write', action='store_true', help='Save crawl output to a local file')
     parser.add_argument('-L', '--common-log-format', default=False, action='store_true', help='Generate log of the requests in CLF')
@@ -84,14 +87,34 @@ def main():
 
     total_content_size = 0
     url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+|ftp://[^\s<>"]+'
-
-    setup_logging(args.verbose, args.debug, args.url)
-    logging.debug('Debug mode is on')
-
-    # Process the root URL
-    urls_queued.append(args.url)
     base_url = urlparse(args.url).netloc
-    logging.info('Web crawling starting on base URL %s (%s)', args.url, base_url)
+
+    setup_logging(args.verbose, args.debug, base_url)
+
+    # Check if the session needs to be resumed or else start from scratch
+    if args.resume:
+        urls_parsed = load_set_from_file(f"logs/{base_url}_urls_parsed.log")
+        urls_failed = load_set_from_file(f"logs/{base_url}_urls_failed.log")
+        urls_extern = load_set_from_file(f"logs/{base_url}_urls_extern.log")
+        urls_errors = load_set_from_file(f"logs/{base_url}_urls_errors.log")
+        urls_files = load_set_from_file(f"logs/{base_url}_urls_files.log")
+        urls_queued = load_queue_from_file(f"logs/{base_url}_urls_queued.log")
+        logging.info('Resuming web crawling session: Crawled: %i, Queued: %i, Failed: %i, Files: %i, External: %i, Errors: %i',
+                     len(urls_parsed),
+                     len(urls_queued),
+                     len(urls_failed),
+                     len(urls_files),
+                     len(urls_extern),
+                     len(urls_errors)
+                     )
+        # In case the stored sets are empty
+        if args.url not in urls_parsed and args.url not in urls_queued:
+            urls_queued.append(args.url)
+
+    else:
+        # Process the root URL
+        urls_queued.append(args.url)
+        logging.info('Web crawling starting on base URL %s (%s)', args.url, base_url)
 
 
     # Limit the URLs processed according to the input limit
@@ -131,11 +154,12 @@ def main():
                             found_base_url = urlparse(new_url).netloc
                             if base_url in found_base_url and new_url not in urls_queued:
                                 urls_queued.append(new_url)
-                            elif new_url not in urls_extern:
+                            if base_url not in found_base_url and new_url not in urls_extern:
                                 urls_extern.add(new_url)
                 elif current_url not in urls_files:
                     urls_files.add(current_url)
             except KeyboardInterrupt:
+                urls_queued.append(current_url)
                 break
             except Exception as err:
                 logging.error('Error processing URL: %s', current_url)
@@ -155,12 +179,12 @@ def main():
                  )
 
     # Store sets to disk
-    store_set_to_file(urls_queued, 'logs', '{base_url}_ulrs_queued')
-    store_set_to_file(urls_parsed, 'logs', '{base_url}_ulrs_parsed')
-    store_set_to_file(urls_failed, 'logs', '{base_url}_ulrs_failed')
-    store_set_to_file(urls_errors, 'logs', '{base_url}_ulrs_errors')
-    store_set_to_file(urls_extern, 'logs', '{base_url}_ulrs_extern')
-    store_set_to_file(urls_files, 'logs', '{base_url}_ulrs_files')
+    store_set_to_file(urls_queued, 'logs', f'{base_url}_urls_queued')
+    store_set_to_file(urls_parsed, 'logs', f'{base_url}_urls_parsed')
+    store_set_to_file(urls_failed, 'logs', f'{base_url}_urls_failed')
+    store_set_to_file(urls_errors, 'logs', f'{base_url}_urls_errors')
+    store_set_to_file(urls_extern, 'logs', f'{base_url}_urls_extern')
+    store_set_to_file(urls_files, 'logs', f'{base_url}_urls_files')
 
 
 if __name__ == "__main__":
