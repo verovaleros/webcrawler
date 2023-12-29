@@ -12,8 +12,9 @@ import re
 import logging
 import requests
 from collections import deque
-from lib.fetch_website import fetch_website
 from urllib.parse import urlparse
+from lib.fetch_website import fetch_website
+from lib.utils import store_set_to_file
 
 
 def create_parser():
@@ -81,6 +82,7 @@ def main():
     urls_errors = set()
     urls_files = set()
 
+    total_content_size = 0
     url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+|ftp://[^\s<>"]+'
 
     setup_logging(args.verbose, args.debug, args.url)
@@ -102,6 +104,7 @@ def main():
                 response = fetch_website(session, current_url, args.username, args.password)
 
                 if response and response.content:
+                    total_content_size += len(response.content)
                     content_size_kb = len(response.content) / 1024
                 else:
                     content_size_kb = 0  # Default size if there's no content
@@ -132,6 +135,8 @@ def main():
                                 urls_extern.add(new_url)
                 elif current_url not in urls_files:
                     urls_files.add(current_url)
+            except KeyboardInterrupt:
+                break
             except Exception as err:
                 logging.error('Error processing URL: %s', current_url)
                 urls_errors.add(current_url)
@@ -139,14 +144,24 @@ def main():
 
 
     # Log summary of the results
-    logging.info('SUMMARY - Crawled: %i, Queued: %i, Failed: %i, Files: %i, External: %i, Errors: %i',
+    logging.info('SUMMARY - Crawled: %i, Queued: %i, Failed: %i, Files: %i, External: %i, Errors: %i, Total downloaded: %.2f Kb',
                  len(urls_parsed),
                  len(urls_queued),
                  len(urls_failed),
                  len(urls_files),
                  len(urls_extern),
-                 len(urls_errors)
+                 len(urls_errors),
+                 total_content_size/1024
                  )
+
+    # Store sets to disk
+    store_set_to_file(urls_queued, 'logs', '{base_url}_ulrs_queued')
+    store_set_to_file(urls_parsed, 'logs', '{base_url}_ulrs_parsed')
+    store_set_to_file(urls_failed, 'logs', '{base_url}_ulrs_failed')
+    store_set_to_file(urls_errors, 'logs', '{base_url}_ulrs_errors')
+    store_set_to_file(urls_extern, 'logs', '{base_url}_ulrs_extern')
+    store_set_to_file(urls_files, 'logs', '{base_url}_ulrs_files')
+
 
 if __name__ == "__main__":
     main()
