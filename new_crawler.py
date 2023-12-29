@@ -52,6 +52,10 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
 
+    urls_parsed = set()
+    urls_queued = set()
+    urls_failed = set()
+
     setup_logging(args.verbose, args.debug, args.url)
     logging.debug('Debug mode is on')
 
