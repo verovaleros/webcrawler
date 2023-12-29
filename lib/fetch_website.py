@@ -1,7 +1,8 @@
 import requests
+from requests.models import Response
 from requests.auth import HTTPBasicAuth
 
-def fetch_website(url, username=None, password=None):
+def fetch_website(req_session, url, username=None, password=None):
     """
     Connects to a website and retrieves its content.
 
@@ -15,30 +16,9 @@ def fetch_website(url, username=None, password=None):
         auth = HTTPBasicAuth(username, password) if username and password else None
 
         # Making a GET request to the website
-        response = requests.get(url, auth=auth, allow_redirects=False)
+        response = req_session.get(url, auth=auth, allow_redirects=False, timeout=5) # 5 seconds timeout
 
-        # Check if response is a redirection
-        if 300 <= response.status_code < 400:
-            return {
-                'content': None,
-                'status_code': response.status_code,
-                'error': None,
-                'redirect_url': response.headers.get('Location', None)
-            }
-
-        # Return the content, status code, and no redirection URL
-        return {
-            'content': response.content,
-            'status_code': response.status_code,
-            'error': None,
-            'redirect_url': None
-        }
-
+        return response
     except requests.RequestException as e:
         # Catching any request-related errors
-        return {
-            'content': None,
-            'status_code': None,
-            'error': str(e),
-            'redirect_url': None
-        }
+        return Response()
