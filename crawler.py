@@ -131,9 +131,12 @@ def main():
                 # We are here if response is ok
                 add_url_to_set(current_url, urls_parsed)
 
-                if response.content:
+                try:
                     total_content_size += len(response.content)
                     content_size_kb = len(response.content) / 1024
+                except:
+                    # If we cannot calculate the size, do nothing.
+                    pass
 
                 logging.info('CRAWLED - %s - %s - %.2f Kb', current_url, response.status_code, content_size_kb)
 
