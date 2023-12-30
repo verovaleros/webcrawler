@@ -114,8 +114,13 @@ def main():
                 # Default size if there's no content
                 content_size_kb = 0
 
-                # Crawl URL
-                response = fetch_website(session, current_url, args.username, args.password)
+                try:
+                    # Crawl URL
+                    response = fetch_website(session, current_url, args.username, args.password)
+                except ConnectionError:
+                    add_url_to_queue(current_url, urls_queued, urls_seen)
+                    logging.error('Error fetching the website. Connectivity issues. Stopping. Resume with --resume')
+                    break
 
                 if not response or not response.ok:
                     # If response is not ok, mark URL as failed
