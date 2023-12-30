@@ -6,13 +6,14 @@ obtain all the structure of a website, including files.
 """
 # pylint: disable=line-too-long
 
-import argparse
 import os
 import re
+import pickle
 import logging
-import requests
 from collections import deque
 from urllib.parse import urlparse
+import requests
+from requests.exceptions import ConnectionError
 from lib.fetch_website import fetch_website
 from lib.parse_website import find_all_links
 from lib.utils import store_set_to_file
@@ -20,28 +21,7 @@ from lib.utils import load_set_from_file
 from lib.utils import load_queue_from_file
 from lib.utils import add_url_to_set
 from lib.utils import add_url_to_queue
-
-
-def create_parser():
-    """
-    Creates and returns the argparse parser with all the defined command line options.
-    """
-    parser = argparse.ArgumentParser(description="Crawler program for extracting data from websites.")
-    parser.add_argument('-V', '--version', action='version', version='Crawler 1.0')
-    parser.add_argument('-v', '--verbose', action='store_true', help='Be verbose')
-    parser.add_argument('-D', '--debug', action='store_true', help='Debug')
-    parser.add_argument('-r', '--resume', action='store_true', help='Resume existing crawling session')
-    parser.add_argument('-u', '--url', required=True, type=str, help='URL to start crawling')
-    parser.add_argument('-w', '--write', action='store_true', help='Save crawl output to a local file')
-    parser.add_argument('-L', '--common-log-format', default=False, action='store_true', help='Generate log of the requests in CLF')
-    parser.add_argument('-e', '--export-file-list', default=False, action='store_true', help='Creates a file with all the URLs to found files during crawling')
-    parser.add_argument('-l', '--crawl-limit', type=int, default=float('inf'), help='Maximum links to crawl')
-    parser.add_argument('-C', '--crawl-depth', type=int, default=float('inf'), help='Limit the crawling depth according to the value specified')
-    parser.add_argument('-d', '--download-file', type=str, default=False, help='Specify the file type of the files to download')
-    parser.add_argument('-i', '--interactive-download', default=False, action='store_true', help='Before downloading files allow user to specify manually the type of files to download')
-    parser.add_argument('-U', '--username', type=str, help='User name for authentication')
-    parser.add_argument('-P', '--password', type=str, help='Request password for authentication')
-    return parser
+from lib.utils import create_parser
 
 
 def setup_logging(verbose, debug, url):
@@ -54,6 +34,7 @@ def setup_logging(verbose, debug, url):
 
     # Replace non-alphanumeric characters with underscore
     sanitized_url = re.sub(r'[^\w\-_\. ]', '_', url)
+
     # Create the logs directory if it doesn't exist
     os.makedirs(log_directory, exist_ok=True)
     log_filename = f"{log_directory}/{sanitized_url}.log"
@@ -87,6 +68,7 @@ def main():
     urls_extern = set()
     urls_errors = set()
     urls_files = set()
+    urls_seen = set()
 
     total_content_size = 0
 
@@ -100,12 +82,12 @@ def main():
 
     # Check if the session needs to be resumed or else start from scratch
     if args.resume:
-        urls_parsed = load_set_from_file(f"logs/{base_url}_urls_parsed.log")
-        urls_failed = load_set_from_file(f"logs/{base_url}_urls_failed.log")
-        urls_extern = load_set_from_file(f"logs/{base_url}_urls_extern.log")
-        urls_errors = load_set_from_file(f"logs/{base_url}_urls_errors.log")
-        urls_files = load_set_from_file(f"logs/{base_url}_urls_files.log")
-        urls_queued = load_queue_from_file(f"logs/{base_url}_urls_queued.log")
+        urls_parsed = load_set_from_file(f"logs/{base_url}_urls_parsed.log", urls_seen)
+        urls_failed = load_set_from_file(f"logs/{base_url}_urls_failed.log", urls_seen)
+        urls_extern = load_set_from_file(f"logs/{base_url}_urls_extern.log", urls_seen)
+        urls_errors = load_set_from_file(f"logs/{base_url}_urls_errors.log", urls_seen)
+        urls_files = load_set_from_file(f"logs/{base_url}_urls_files.log", urls_seen)
+        urls_queued = load_queue_from_file(f"logs/{base_url}_urls_queued.log", urls_seen)
         logging.info('Resuming web crawling session: Crawled: %i, Queued: %i, Failed: %i, Files: %i, External: %i, Errors: %i',
                      len(urls_parsed),
                      len(urls_queued),
@@ -116,7 +98,7 @@ def main():
                      )
     else:
         # Process the root URL
-        add_url_to_queue(args.url, urls_queued)
+        add_url_to_queue(args.url, urls_queued, urls_seen)
         logging.info('Web crawling starting on base URL %s (%s)', args.url, base_url)
 
 
@@ -125,51 +107,75 @@ def main():
         # Create one session to run all the HTTP requests through it
         with requests.Session() as session:
             try:
+                # Breadth-first search
                 current_url = urls_queued.popleft()
+                add_url_to_set(current_url, urls_seen)
 
-                response = fetch_website(session, current_url, args.username, args.password)
+                # Default size if there's no content
+                content_size_kb = 0
 
-                # Attempt to calculate the content size
-                if response and response.content:
+                try:
+                    # Crawl URL
+                    response = fetch_website(session, current_url, args.username, args.password)
+                except ConnectionError:
+                    add_url_to_queue(current_url, urls_queued, urls_seen)
+                    logging.error('Error fetching the website. Connectivity issues. Stopping. Resume with --resume')
+                    break
+
+                if not response or not response.ok:
+                    # If response is not ok, mark URL as failed
+                    add_url_to_set(current_url, urls_failed)
+                    continue
+
+                # Depending on the response status, store the URL in the correct set.
+                # We are here if response is ok
+                add_url_to_set(current_url, urls_parsed)
+
+                try:
                     total_content_size += len(response.content)
                     content_size_kb = len(response.content) / 1024
-                else:
-                    content_size_kb = 0  # Default size if there's no content
+                except:
+                    # If we cannot calculate the size, do nothing.
+                    pass
 
-                logging.info('CRAWLED - %s - %s - %.2f Kb', current_url, response.status_code, len(response.content)/1024)
+                logging.info('CRAWLED - %s - %s - %.2f Kb', current_url, response.status_code, content_size_kb)
 
-                # Depending on the response status,
-                # store the URL in the correct set.
-                if response.ok:
-                    urls_parsed.add(current_url)
-                    if response.headers.get('Location', None) is not None:
-                        redirection = response.headers.get('Location', None)
-                        if redirection not in urls_parsed and redirection not in urls_queued:
-                            add_url_to_queue(response.headers.get('Location', None), urls_queued)
-                else:
-                    add_url_to_set(current_url, urls_failed)
+                if response.headers.get('Location', None) is not None:
+                    redirection_url = response.headers.get('Location', None)
+                    if redirection_url not in urls_seen:
+                        add_url_to_queue(redirection_url, urls_queued, urls_seen)
+                        continue
 
-                # Parse the response content to find
-                # all outlinks from the HTML reponse
+                # Only parse the HTML responses, ignore the rest.
                 content_type = response.headers.get('Content-Type', '').lower()
-                if 'text/html' in content_type:
+                if 'text/html' not in content_type:
+                    add_url_to_set(current_url, urls_files)
+                    logging.debug('FILES - %s', current_url)
+                    continue
+
+                # Parse the response content to find all outlinks from the HTML reponse
+                try:
                     found_urls = find_all_links(response.content, base_scheme, base_url)
                     logging.debug('Found %i new URLs', len(found_urls))
+                except Exception as err:
+                    logging.error('Exception found in find_all_links(): %s', err)
+                    continue
 
-                    for new_url in found_urls:
-                        if new_url not in urls_parsed:
-                            found_base_url = urlparse(new_url).netloc
-                            if base_url in found_base_url and new_url not in urls_queued:
-                                add_url_to_queue(new_url, urls_queued)
-                                logging.debug('FETCHED - %s', new_url)
-                            if base_url not in found_base_url and new_url not in urls_extern:
-                                add_url_to_set(new_url, urls_extern)
-                                logging.debug('EXTERNAL - %s', new_url)
-                elif current_url not in urls_files:
-                    add_url_to_set(current_url, urls_files)
-                    logging.debug('FILES - %s', new_url)
+                for new_url in found_urls:
+                    # Only process those URLs that have not been parsed
+                    if new_url not in urls_seen:
+                        found_base_url = urlparse(new_url).netloc
+                        if base_url in found_base_url:
+                            add_url_to_queue(new_url, urls_queued, urls_seen)
+                            logging.debug('FETCHED - %s', new_url)
+                            continue
+
+                        # Other links are external
+                        add_url_to_set(new_url, urls_extern)
+                        logging.debug('EXTERNAL - %s', new_url)
+
             except KeyboardInterrupt:
-                add_url_to_queue(current_url, urls_queued)
+                add_url_to_queue(current_url, urls_queued, urls_seen)
                 break
             except Exception as err:
                 logging.error('Error processing URL: %s (%s)', current_url, err)
@@ -198,4 +204,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except FileNotFoundError:
+        logging.error('No session to resume from. Exiting.')
+    except pickle.UnpicklingError:
+        logging.error('Session cannot be restored. Pickle file seems corrupt.')

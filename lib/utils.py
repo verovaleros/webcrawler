@@ -3,8 +3,31 @@ Set of common util functions to supopr the
 functionality of the web crawler
 """
 import pickle
+import argparse
 from collections import deque
 from urllib.parse import urlparse
+
+
+def create_parser():
+    """
+    Creates and returns the argparse parser with all the defined command line options.
+    """
+    parser = argparse.ArgumentParser(description="Crawler program for extracting data from websites.")
+    parser.add_argument('-V', '--version', action='version', version='Crawler 1.0')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Be verbose')
+    parser.add_argument('-D', '--debug', action='store_true', help='Debug')
+    parser.add_argument('-r', '--resume', action='store_true', help='Resume existing crawling session')
+    parser.add_argument('-u', '--url', required=True, type=str, help='URL to start crawling')
+    parser.add_argument('-w', '--write', action='store_true', help='Save crawl output to a local file')
+    parser.add_argument('-L', '--common-log-format', default=False, action='store_true', help='Generate log of the requests in CLF')
+    parser.add_argument('-e', '--export-file-list', default=False, action='store_true', help='Creates a file with all the URLs to found files during crawling')
+    parser.add_argument('-l', '--crawl-limit', type=int, default=float('inf'), help='Maximum links to crawl')
+    parser.add_argument('-C', '--crawl-depth', type=int, default=float('inf'), help='Limit the crawling depth according to the value specified')
+    parser.add_argument('-d', '--download-file', type=str, default=False, help='Specify the file type of the files to download')
+    parser.add_argument('-i', '--interactive-download', default=False, action='store_true', help='Before downloading files allow user to specify manually the type of files to download')
+    parser.add_argument('-U', '--username', type=str, help='User name for authentication')
+    parser.add_argument('-P', '--password', type=str, help='Request password for authentication')
+    return parser
 
 
 def is_valid_url(url):
@@ -18,7 +41,7 @@ def is_valid_url(url):
     return bool(parsed.scheme) and bool(parsed.netloc)
 
 
-def add_url_to_queue(url, url_queue):
+def add_url_to_queue(url, url_queue, url_seen_set):
     """
     Adds a URL to the queue after validating and normalizing it, and ensuring it's not a duplicate.
 
@@ -27,6 +50,7 @@ def add_url_to_queue(url, url_queue):
     """
     url = url.strip().lower()
     if is_valid_url(url):
+        url_seen_set.add(url)
         url_queue.append(url)
 
 
@@ -56,7 +80,7 @@ def store_set_to_file(set_to_save_to_disk, output_directory, file_name):
         pickle.dump(set_to_save_to_disk, file)
 
 
-def load_set_from_file(file_name):
+def load_set_from_file(file_name, urls_seen_set):
     """
     Loads the contents of a file into a set.
 
@@ -68,15 +92,15 @@ def load_set_from_file(file_name):
         with open(file_name, "rb") as file:
             loaded_set = pickle.load(file)
     except FileNotFoundError:
-        pass
+        raise
     except pickle.UnpicklingError:
-        print(f"Error loading the queue from {file_name}. File may be corrupted.")
-        pass
+        raise
 
+    urls_seen_set.update(loaded_set)
     return loaded_set
 
 
-def load_queue_from_file(file_name):
+def load_queue_from_file(file_name, urls_seen_set):
     """
     Loads the contents of a file into a deque (queue).
 
@@ -93,4 +117,6 @@ def load_queue_from_file(file_name):
         print(f"Error loading the queue from {file_name}. File may be corrupted.")
         return deque()  # Return an empty deque in case of an unpickling error
 
+    for url in loaded_queue:
+        urls_seen_set.add(url)
     return loaded_queue
