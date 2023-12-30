@@ -1,5 +1,7 @@
 Web Crawler Security Tool
 =========================
+![GitHub last commit (branch)](https://img.shields.io/github/last-commit/verovaleros/webcrawler/main)
+
 
 The Web Crawler Security Tool is a Python-based tool that automatically crawls a website. It is a web crawler oriented to help in penetration testing tasks. The main task of this tool is to search and list all the links (pages and files) in a website. The crawler has been completely rewritten in v2.0. The current version is still a work in progress, and the features shown below are still not fully ported.
 
