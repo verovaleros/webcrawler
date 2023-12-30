@@ -9,9 +9,10 @@ obtain all the structure of a website, including files.
 import os
 import re
 import logging
-import requests
 from collections import deque
 from urllib.parse import urlparse
+import requests
+from requests.exceptions import ConnectionError
 from lib.fetch_website import fetch_website
 from lib.parse_website import find_all_links
 from lib.utils import store_set_to_file
@@ -19,7 +20,6 @@ from lib.utils import load_set_from_file
 from lib.utils import load_queue_from_file
 from lib.utils import add_url_to_set
 from lib.utils import add_url_to_queue
-from requests.exceptions import ConnectionError
 from lib.utils import create_parser
 
 
