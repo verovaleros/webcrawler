@@ -174,10 +174,6 @@ def main():
                         add_url_to_set(new_url, urls_extern)
                         logging.debug('EXTERNAL - %s', new_url)
 
-            except ConnectionError:
-                add_url_to_queue(current_url, urls_queued, urls_seen)
-                logging.error('Identified connectivity issues, stopping. Resume with --resume')
-                break
             except KeyboardInterrupt:
                 add_url_to_queue(current_url, urls_queued, urls_seen)
                 break
