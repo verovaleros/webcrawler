@@ -18,7 +18,7 @@ def is_valid_url(url):
     return bool(parsed.scheme) and bool(parsed.netloc)
 
 
-def add_url_to_queue(url, url_queue):
+def add_url_to_queue(url, url_queue, url_seen_set):
     """
     Adds a URL to the queue after validating and normalizing it, and ensuring it's not a duplicate.
 
@@ -27,6 +27,7 @@ def add_url_to_queue(url, url_queue):
     """
     url = url.strip().lower()
     if is_valid_url(url):
+        url_seen_set.add(url)
         url_queue.append(url)
 
 
@@ -56,7 +57,7 @@ def store_set_to_file(set_to_save_to_disk, output_directory, file_name):
         pickle.dump(set_to_save_to_disk, file)
 
 
-def load_set_from_file(file_name):
+def load_set_from_file(file_name, urls_seen_set):
     """
     Loads the contents of a file into a set.
 
@@ -73,10 +74,11 @@ def load_set_from_file(file_name):
         print(f"Error loading the queue from {file_name}. File may be corrupted.")
         pass
 
+    urls_seen_set.update(loaded_set)
     return loaded_set
 
 
-def load_queue_from_file(file_name):
+def load_queue_from_file(file_name, urls_seen_set):
     """
     Loads the contents of a file into a deque (queue).
 
@@ -93,4 +95,6 @@ def load_queue_from_file(file_name):
         print(f"Error loading the queue from {file_name}. File may be corrupted.")
         return deque()  # Return an empty deque in case of an unpickling error
 
+    for url in loaded_queue:
+        urls_seen_set.add(url)
     return loaded_queue

@@ -88,6 +88,7 @@ def main():
     urls_extern = set()
     urls_errors = set()
     urls_files = set()
+    urls_seen = set()
 
     total_content_size = 0
 
@@ -101,12 +102,12 @@ def main():
 
     # Check if the session needs to be resumed or else start from scratch
     if args.resume:
-        urls_parsed = load_set_from_file(f"logs/{base_url}_urls_parsed.log")
-        urls_failed = load_set_from_file(f"logs/{base_url}_urls_failed.log")
-        urls_extern = load_set_from_file(f"logs/{base_url}_urls_extern.log")
-        urls_errors = load_set_from_file(f"logs/{base_url}_urls_errors.log")
-        urls_files = load_set_from_file(f"logs/{base_url}_urls_files.log")
-        urls_queued = load_queue_from_file(f"logs/{base_url}_urls_queued.log")
+        urls_parsed = load_set_from_file(f"logs/{base_url}_urls_parsed.log", urls_seen)
+        urls_failed = load_set_from_file(f"logs/{base_url}_urls_failed.log", urls_seen)
+        urls_extern = load_set_from_file(f"logs/{base_url}_urls_extern.log", urls_seen)
+        urls_errors = load_set_from_file(f"logs/{base_url}_urls_errors.log", urls_seen)
+        urls_files = load_set_from_file(f"logs/{base_url}_urls_files.log", urls_seen)
+        urls_queued = load_queue_from_file(f"logs/{base_url}_urls_queued.log", urls_seen)
         logging.info('Resuming web crawling session: Crawled: %i, Queued: %i, Failed: %i, Files: %i, External: %i, Errors: %i',
                      len(urls_parsed),
                      len(urls_queued),
@@ -117,7 +118,7 @@ def main():
                      )
     else:
         # Process the root URL
-        add_url_to_queue(args.url, urls_queued)
+        add_url_to_queue(args.url, urls_queued, urls_seen)
         logging.info('Web crawling starting on base URL %s (%s)', args.url, base_url)
 
 
@@ -126,55 +127,64 @@ def main():
         # Create one session to run all the HTTP requests through it
         with requests.Session() as session:
             try:
+                # Breadth-first search
                 current_url = urls_queued.popleft()
+                add_url_to_set(current_url, urls_seen)
 
+                # Default size if there's no content
+                content_size_kb = 0
+
+                # Crawl URL
                 response = fetch_website(session, current_url, args.username, args.password)
 
-                # Attempt to calculate the content size
-                if response and response.content:
+                if not response or not response.ok:
+                    # If response is not ok, mark URL as failed
+                    add_url_to_set(current_url, urls_failed)
+                    continue
+
+                if response.content:
                     total_content_size += len(response.content)
                     content_size_kb = len(response.content) / 1024
-                else:
-                    content_size_kb = 0  # Default size if there's no content
 
                 logging.info('CRAWLED - %s - %s - %.2f Kb', current_url, response.status_code, len(response.content)/1024)
 
-                # Depending on the response status,
-                # store the URL in the correct set.
+                # Depending on the response status, store the URL in the correct set.
                 if response.ok:
-                    urls_parsed.add(current_url)
+                    add_url_to_set(current_url, urls_parsed)
+
                     if response.headers.get('Location', None) is not None:
-                        redirection = response.headers.get('Location', None)
-                        if redirection not in urls_parsed and redirection not in urls_queued:
-                            add_url_to_queue(response.headers.get('Location', None), urls_queued)
-                else:
-                    add_url_to_set(current_url, urls_failed)
+                        redirection_url = response.headers.get('Location', None)
+                        if redirection_url not in urls_seen:
+                            add_url_to_queue(redirection_url, urls_queued, urls_seen)
+                            continue
 
-                # Parse the response content to find
-                # all outlinks from the HTML reponse
-                content_type = response.headers.get('Content-Type', '').lower()
-                if 'text/html' in content_type:
-                    found_urls = find_all_links(response.content, base_scheme, base_url)
-                    logging.debug('Found %i new URLs', len(found_urls))
+                    # Parse the response content to find all outlinks from the HTML reponse
+                    content_type = response.headers.get('Content-Type', '').lower()
+                    if 'text/html' in content_type:
+                        found_urls = find_all_links(response.content, base_scheme, base_url)
+                        logging.debug('Found %i new URLs', len(found_urls))
 
-                    for new_url in found_urls:
-                        if new_url not in urls_parsed:
-                            found_base_url = urlparse(new_url).netloc
-                            if base_url in found_base_url and new_url not in urls_queued:
-                                add_url_to_queue(new_url, urls_queued)
-                                logging.debug('FETCHED - %s', new_url)
-                            if base_url not in found_base_url and new_url not in urls_extern:
-                                add_url_to_set(new_url, urls_extern)
-                                logging.debug('EXTERNAL - %s', new_url)
-                elif current_url not in urls_files:
-                    add_url_to_set(current_url, urls_files)
-                    logging.debug('FILES - %s', new_url)
+                        for new_url in found_urls:
+                            # Only process those URLs that have not been parsed
+                            if new_url not in urls_seen:
+                                found_base_url = urlparse(new_url).netloc
+                                if base_url in found_base_url:
+                                    add_url_to_queue(new_url, urls_queued, urls_seen)
+                                    logging.debug('FETCHED - %s', new_url)
+                                    continue
+                                else:
+                                    add_url_to_set(new_url, urls_extern)
+                                    logging.debug('EXTERNAL - %s', new_url)
+                    else:
+                        add_url_to_set(current_url, urls_files)
+                        logging.debug('FILES - %s', new_url)
+
             except ConnectionError:
-                add_url_to_queue(current_url, urls_queued)
+                add_url_to_queue(current_url, urls_queued, urls_seen)
                 logging.error('Identified connectivity issues, stopping. Resume with --resume')
                 break
             except KeyboardInterrupt:
-                add_url_to_queue(current_url, urls_queued)
+                add_url_to_queue(current_url, urls_queued, urls_seen)
                 break
             except Exception as err:
                 logging.error('Error processing URL: %s (%s)', current_url, err)
