@@ -18,6 +18,8 @@ from lib.parse_website import find_all_links
 from lib.utils import store_set_to_file
 from lib.utils import load_set_from_file
 from lib.utils import load_queue_from_file
+from lib.utils import add_url_to_set
+from lib.utils import add_url_to_queue
 
 
 def create_parser():
@@ -114,7 +116,7 @@ def main():
                      )
     else:
         # Process the root URL
-        urls_queued.append(args.url)
+        add_url_to_queue(args.url, urls_queued)
         logging.info('Web crawling starting on base URL %s (%s)', args.url, base_url)
 
 
@@ -141,9 +143,9 @@ def main():
                 if response.ok:
                     urls_parsed.add(current_url)
                     if response.headers.get('Location', None) is not None:
-                        urls_queued.append(response.headers.get('Location', None))
+                        add_url_to_queue(response.headers.get('Location', None), urls_queued)
                 else:
-                    urls_failed.add(current_url)
+                    add_url_to_set(current_url, urls_failed)
 
                 # Parse the response content to find
                 # all outlinks from the HTML reponse
@@ -154,20 +156,21 @@ def main():
 
                     for new_url in found_urls:
                         if new_url not in urls_parsed:
-                            logging.debug('FETCHED - %s', new_url)
                             found_base_url = urlparse(new_url).netloc
                             if base_url in found_base_url and new_url not in urls_queued:
-                                urls_queued.append(new_url)
+                                add_url_to_queue(new_url, urls_queued)
+                                logging.debug('FETCHED - %s', new_url)
                             if base_url not in found_base_url and new_url not in urls_extern:
-                                urls_extern.add(new_url)
+                                add_url_to_set(new_url, urls_extern)
+                                logging.debug('EXTERNAL - %s', new_url)
                 elif current_url not in urls_files:
-                    urls_files.add(current_url)
+                    add_url_to_set(current_url, urls_files)
+                    logging.debug('FILES - %s', new_url)
             except KeyboardInterrupt:
-                urls_queued.append(current_url)
+                add_url_to_queue(current_url, urls_queued)
                 break
             except Exception as err:
-                logging.error('Error processing URL: %s', current_url)
-                print(err)
+                logging.error('Error processing URL: %s (%s)', current_url, err)
                 urls_errors.add(current_url)
                 continue
 

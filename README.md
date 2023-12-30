@@ -13,12 +13,12 @@ Ported Features
 * Uses CTRL-C to stop current crawler stages and save the status.
 * Export the files identified in separate files and the errors and failed requests.
 * Uses beautifulsoup4 for finding absolute and relative links.
+* Implemented HEAD method for analyzing file types before crawling. This feature improves the speed of the crawler significantly.
+* Does not crawl non-html files.
   
 Unported features
 ========
-* Implemented HEAD method for analyzing file types before crawling. This feature improves the speed of the crawler significantly.
 * Identifies non-html files and shows them.
-* Does not crawl non-html files.
 * Identifies directory indexing.
 * Crawl directories with indexing (not yet implemented in v1.0)
 * Identifies all kinds of files by reading the content-type header field of the response.
