@@ -92,10 +92,9 @@ def load_set_from_file(file_name, urls_seen_set):
         with open(file_name, "rb") as file:
             loaded_set = pickle.load(file)
     except FileNotFoundError:
-        pass
+        raise
     except pickle.UnpicklingError:
-        print(f"Error loading the queue from {file_name}. File may be corrupted.")
-        pass
+        raise
 
     urls_seen_set.update(loaded_set)
     return loaded_set
