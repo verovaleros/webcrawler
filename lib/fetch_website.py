@@ -40,6 +40,6 @@ def fetch_website(req_session, url, username=None, password=None):
     except ConnectionError:
         # Propagate the exception if there's a connection error
         raise
-    except requests.RequestException as err:
+    except requests.RequestException:
         # Return an empty Response object in case of error
         return Response()
