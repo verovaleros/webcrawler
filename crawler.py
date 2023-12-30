@@ -154,8 +154,12 @@ def main():
                     continue
 
                 # Parse the response content to find all outlinks from the HTML reponse
-                found_urls = find_all_links(response.content, base_scheme, base_url)
-                logging.debug('Found %i new URLs', len(found_urls))
+                try:
+                    found_urls = find_all_links(response.content, base_scheme, base_url)
+                    logging.debug('Found %i new URLs', len(found_urls))
+                except Exception as err:
+                    logging.error('Exception found in find_all_links(): %s', err)
+                    continue
 
                 for new_url in found_urls:
                     # Only process those URLs that have not been parsed
