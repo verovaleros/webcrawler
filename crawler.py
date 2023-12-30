@@ -143,7 +143,9 @@ def main():
                 if response.ok:
                     urls_parsed.add(current_url)
                     if response.headers.get('Location', None) is not None:
-                        add_url_to_queue(response.headers.get('Location', None), urls_queued)
+                        redirection = response.headers.get('Location', None)
+                        if redirection not in urls_parsed and redirection not in urls_queued:
+                            add_url_to_queue(response.headers.get('Location', None), urls_queued)
                 else:
                     add_url_to_set(current_url, urls_failed)
 
