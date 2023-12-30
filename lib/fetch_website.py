@@ -22,7 +22,11 @@ def fetch_website(req_session, url, username=None, password=None):
         auth = HTTPBasicAuth(username, password) if username and password else None
 
         # Making a HEAD request to check content type
-        head_response = req_session.head(url, auth=auth, allow_redirects=False, timeout=5)
+        head_response = req_session.head(url,
+                                         auth=auth,
+                                         allow_redirects=False,
+                                         verify=False,
+                                         timeout=5)
 
         # Check if the content type is HTML
         if 'text/html' in head_response.headers.get('Content-Type', ''):
@@ -31,7 +35,11 @@ def fetch_website(req_session, url, username=None, password=None):
                 return head_response
 
             # Making a GET request if content is HTML
-            response = req_session.get(url, auth=auth, allow_redirects=False, timeout=5)
+            response = req_session.get(url,
+                                       auth=auth,
+                                       allow_redirects=False,
+                                       verify=False,
+                                       timeout=5)
             return response
 
         # Return the HEAD response if not HTML
@@ -43,3 +51,5 @@ def fetch_website(req_session, url, username=None, password=None):
     except requests.RequestException:
         # Return an empty Response object in case of error
         return Response()
+    except:
+        raise
