@@ -29,13 +29,13 @@ def fetch_website(req_session, url, username=None, password=None):
             # If it's a redirection, return the head response
             if head_response.headers.get('Location', None) is not None:
                 return head_response
-            else:
-                # Making a GET request if content is HTML
-                response = req_session.get(url, auth=auth, allow_redirects=False, timeout=5)
-                return response
-        else:
-            # Return the HEAD response if not HTML
-            return head_response
+
+            # Making a GET request if content is HTML
+            response = req_session.get(url, auth=auth, allow_redirects=False, timeout=5)
+            return response
+
+        # Return the HEAD response if not HTML
+        return head_response
 
     except ConnectionError:
         # Propagate the exception if there's a connection error
