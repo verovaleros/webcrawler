@@ -120,42 +120,45 @@ def main():
                     add_url_to_set(current_url, urls_failed)
                     continue
 
+                # Depending on the response status, store the URL in the correct set.
+                # We are here if response is ok
+                add_url_to_set(current_url, urls_parsed)
+
                 if response.content:
                     total_content_size += len(response.content)
                     content_size_kb = len(response.content) / 1024
 
                 logging.info('CRAWLED - %s - %s - %.2f Kb', current_url, response.status_code, content_size_kb)
 
-                # Depending on the response status, store the URL in the correct set.
-                if response.ok:
-                    add_url_to_set(current_url, urls_parsed)
+                if response.headers.get('Location', None) is not None:
+                    redirection_url = response.headers.get('Location', None)
+                    if redirection_url not in urls_seen:
+                        add_url_to_queue(redirection_url, urls_queued, urls_seen)
+                        continue
 
-                    if response.headers.get('Location', None) is not None:
-                        redirection_url = response.headers.get('Location', None)
-                        if redirection_url not in urls_seen:
-                            add_url_to_queue(redirection_url, urls_queued, urls_seen)
+                # Only parse the HTML responses, ignore the rest.
+                content_type = response.headers.get('Content-Type', '').lower()
+                if not 'text/html' in content_type:
+                    add_url_to_set(current_url, urls_files)
+                    logging.debug('FILES - %s', current_url)
+                    continue
+
+                # Parse the response content to find all outlinks from the HTML reponse
+                found_urls = find_all_links(response.content, base_scheme, base_url)
+                logging.debug('Found %i new URLs', len(found_urls))
+
+                for new_url in found_urls:
+                    # Only process those URLs that have not been parsed
+                    if new_url not in urls_seen:
+                        found_base_url = urlparse(new_url).netloc
+                        if base_url in found_base_url:
+                            add_url_to_queue(new_url, urls_queued, urls_seen)
+                            logging.debug('FETCHED - %s', new_url)
                             continue
 
-                    # Parse the response content to find all outlinks from the HTML reponse
-                    content_type = response.headers.get('Content-Type', '').lower()
-                    if 'text/html' in content_type:
-                        found_urls = find_all_links(response.content, base_scheme, base_url)
-                        logging.debug('Found %i new URLs', len(found_urls))
-
-                        for new_url in found_urls:
-                            # Only process those URLs that have not been parsed
-                            if new_url not in urls_seen:
-                                found_base_url = urlparse(new_url).netloc
-                                if base_url in found_base_url:
-                                    add_url_to_queue(new_url, urls_queued, urls_seen)
-                                    logging.debug('FETCHED - %s', new_url)
-                                    continue
-                                else:
-                                    add_url_to_set(new_url, urls_extern)
-                                    logging.debug('EXTERNAL - %s', new_url)
-                    else:
-                        add_url_to_set(current_url, urls_files)
-                        logging.debug('FILES - %s', new_url)
+                        # Other links are external
+                        add_url_to_set(new_url, urls_extern)
+                        logging.debug('EXTERNAL - %s', new_url)
 
             except ConnectionError:
                 add_url_to_queue(current_url, urls_queued, urls_seen)
