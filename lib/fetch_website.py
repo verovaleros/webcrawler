@@ -1,6 +1,10 @@
+import logging
+import requests
 from requests.models import Response
 from requests.auth import HTTPBasicAuth
-import requests
+from requests.exceptions import ConnectionError
+from requests.exceptions import HTTPError
+
 
 def fetch_website(req_session, url, username=None, password=None):
     """
@@ -32,6 +36,9 @@ def fetch_website(req_session, url, username=None, password=None):
             # Return the HEAD response if not HTML
             return head_response
 
-    except requests.RequestException as e:
+    except ConnectionError:
+        # Propagate the exception if there's a connection error
+        raise
+    except requests.RequestException as err:
         # Return an empty Response object in case of error
         return Response()
