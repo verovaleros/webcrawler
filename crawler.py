@@ -194,4 +194,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except FileNotFoundError:
+        logging.error('No session to resume from. Exiting.')
+    except pickle.UnpicklingError:
+        logging.error('Session cannot be restored. Pickle file seems corrupt.')
