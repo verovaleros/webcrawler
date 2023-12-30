@@ -64,13 +64,13 @@ def setup_logging(verbose, debug, url):
 
     # File handler for logging to a file
     file_handler = logging.FileHandler(log_filename, mode='a')
-    file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_formatter = logging.Formatter('%(asctime)s.%(msecs)05d - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     file_handler.setFormatter(file_formatter)
     logger.addHandler(file_handler)
 
     # Console handler for logging to stdout
     console_handler = logging.StreamHandler()
-    console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    console_formatter = logging.Formatter('%(asctime)s.%(msecs)05d - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
 
