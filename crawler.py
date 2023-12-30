@@ -124,7 +124,7 @@ def main():
                     total_content_size += len(response.content)
                     content_size_kb = len(response.content) / 1024
 
-                logging.info('CRAWLED - %s - %s - %.2f Kb', current_url, response.status_code, len(response.content)/1024)
+                logging.info('CRAWLED - %s - %s - %.2f Kb', current_url, response.status_code, content_size_kb)
 
                 # Depending on the response status, store the URL in the correct set.
                 if response.ok:
