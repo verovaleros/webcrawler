@@ -1,3 +1,6 @@
+"""
+Parses HTML content to find all links, reconstructs full URLs for relative links,
+"""
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
