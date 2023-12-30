@@ -1,4 +1,6 @@
-import logging
+"""
+Connects to a website and retrieves its content.
+"""
 import requests
 from requests.models import Response
 from requests.auth import HTTPBasicAuth
