@@ -6,7 +6,6 @@ obtain all the structure of a website, including files.
 """
 # pylint: disable=line-too-long
 
-import argparse
 import os
 import re
 import logging
@@ -21,28 +20,7 @@ from lib.utils import load_queue_from_file
 from lib.utils import add_url_to_set
 from lib.utils import add_url_to_queue
 from requests.exceptions import ConnectionError
-
-
-def create_parser():
-    """
-    Creates and returns the argparse parser with all the defined command line options.
-    """
-    parser = argparse.ArgumentParser(description="Crawler program for extracting data from websites.")
-    parser.add_argument('-V', '--version', action='version', version='Crawler 1.0')
-    parser.add_argument('-v', '--verbose', action='store_true', help='Be verbose')
-    parser.add_argument('-D', '--debug', action='store_true', help='Debug')
-    parser.add_argument('-r', '--resume', action='store_true', help='Resume existing crawling session')
-    parser.add_argument('-u', '--url', required=True, type=str, help='URL to start crawling')
-    parser.add_argument('-w', '--write', action='store_true', help='Save crawl output to a local file')
-    parser.add_argument('-L', '--common-log-format', default=False, action='store_true', help='Generate log of the requests in CLF')
-    parser.add_argument('-e', '--export-file-list', default=False, action='store_true', help='Creates a file with all the URLs to found files during crawling')
-    parser.add_argument('-l', '--crawl-limit', type=int, default=float('inf'), help='Maximum links to crawl')
-    parser.add_argument('-C', '--crawl-depth', type=int, default=float('inf'), help='Limit the crawling depth according to the value specified')
-    parser.add_argument('-d', '--download-file', type=str, default=False, help='Specify the file type of the files to download')
-    parser.add_argument('-i', '--interactive-download', default=False, action='store_true', help='Before downloading files allow user to specify manually the type of files to download')
-    parser.add_argument('-U', '--username', type=str, help='User name for authentication')
-    parser.add_argument('-P', '--password', type=str, help='Request password for authentication')
-    return parser
+from lib.utils import create_parser
 
 
 def setup_logging(verbose, debug, url):
