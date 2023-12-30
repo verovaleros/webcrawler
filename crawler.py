@@ -138,7 +138,7 @@ def main():
 
                 # Only parse the HTML responses, ignore the rest.
                 content_type = response.headers.get('Content-Type', '').lower()
-                if not 'text/html' in content_type:
+                if 'text/html' not in content_type:
                     add_url_to_set(current_url, urls_files)
                     logging.debug('FILES - %s', current_url)
                     continue
