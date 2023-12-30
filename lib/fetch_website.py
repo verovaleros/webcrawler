@@ -5,7 +5,6 @@ import requests
 from requests.models import Response
 from requests.auth import HTTPBasicAuth
 from requests.exceptions import ConnectionError
-from requests.exceptions import HTTPError
 
 
 def fetch_website(req_session, url, username=None, password=None):
