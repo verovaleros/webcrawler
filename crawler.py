@@ -20,6 +20,7 @@ from lib.utils import load_set_from_file
 from lib.utils import load_queue_from_file
 from lib.utils import add_url_to_set
 from lib.utils import add_url_to_queue
+from requests.exceptions import ConnectionError
 
 
 def create_parser():
@@ -168,6 +169,10 @@ def main():
                 elif current_url not in urls_files:
                     add_url_to_set(current_url, urls_files)
                     logging.debug('FILES - %s', new_url)
+            except ConnectionError:
+                add_url_to_queue(current_url, urls_queued)
+                logging.error('Identified connectivity issues, stopping. Resume with --resume')
+                break
             except KeyboardInterrupt:
                 add_url_to_queue(current_url, urls_queued)
                 break
