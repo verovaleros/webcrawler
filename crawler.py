@@ -8,6 +8,7 @@ obtain all the structure of a website, including files.
 
 import os
 import re
+import pickle
 import logging
 from collections import deque
 from urllib.parse import urlparse
@@ -33,6 +34,7 @@ def setup_logging(verbose, debug, url):
 
     # Replace non-alphanumeric characters with underscore
     sanitized_url = re.sub(r'[^\w\-_\. ]', '_', url)
+
     # Create the logs directory if it doesn't exist
     os.makedirs(log_directory, exist_ok=True)
     log_filename = f"{log_directory}/{sanitized_url}.log"
