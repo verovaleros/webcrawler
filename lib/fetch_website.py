@@ -25,7 +25,7 @@ def fetch_website(req_session, url, username=None, password=None):
         head_response = req_session.head(url,
                                          auth=auth,
                                          allow_redirects=False,
-                                         verify=False,
+                                         verify=True,
                                          timeout=5)
 
         # Check if the content type is HTML
@@ -38,7 +38,7 @@ def fetch_website(req_session, url, username=None, password=None):
             response = req_session.get(url,
                                        auth=auth,
                                        allow_redirects=False,
-                                       verify=False,
+                                       verify=True,
                                        timeout=5)
             return response
 
